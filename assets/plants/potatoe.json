@@ -1,0 +1,50 @@
+{
+  "id": "papa",
+  "nombre": "Papa",
+  "ambiente": {
+    "temperatura": {
+      "ideal": { "min": 17, "max": 23 },
+      "critico": { "min": 10, "max": 30 }
+    },
+    "humedad_relativa": {
+      "ideal": { "min": 60, "max": 80 },
+      "critico": { "min": 30, "max": 90 }
+    },
+    "radiacion": {
+      "ideal": { "min": 800, "max": 1200 },
+      "critico": { "min": 400, "max": 1600 }
+    }
+  },
+  "suelo": {
+    "temperatura": {
+      "ideal": { "min": 15, "max": 20 },
+      "critico": { "min": 5, "max": 32 }
+    },
+    "ph": {
+      "ideal": { "min": 5.5, "max": 6.7 },
+      "critico": { "min": 4.5, "max": 8.5 }
+    },
+    "humedad": {
+      "ideal": { "min": 20, "max": 40 },
+      "critico": { "min": 10, "max": 60 }
+    },
+    "conductividad": {
+      "ideal": { "min": 0, "max": 1.7 },
+      "critico": { "min": 0, "max": 4.0 }
+    },
+    "npk": {
+      "n": {
+        "ideal": { "min": 100, "max": 200 },
+        "critico": { "min": 50, "max": 400 }
+      },
+      "p": {
+        "ideal": { "min": 40, "max": 100 },
+        "critico": { "min": 10, "max": 200 }
+      },
+      "k": {
+        "ideal": { "min": 100, "max": 250 },
+        "critico": { "min": 50, "max": 400 }
+      }
+    }
+  }
+}

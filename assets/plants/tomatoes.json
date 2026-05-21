@@ -1,0 +1,50 @@
+{
+  "id": "tomate",
+  "nombre": "Tomate",
+  "ambiente": {
+    "temperatura": {
+      "ideal": { "min": 18, "max": 30 },
+      "critico": { "min": 10, "max": 38 }
+    },
+    "humedad_relativa": {
+      "ideal": { "min": 60, "max": 80 },
+      "critico": { "min": 40, "max": 90 }
+    },
+    "radiacion": {
+      "ideal": { "min": 800, "max": 1000 },
+      "critico": { "min": 500, "max": 1200 }
+    }
+  },
+  "suelo": {
+    "temperatura": {
+      "ideal": { "min": 20, "max": 25 },
+      "critico": { "min": 15, "max": 35 }
+    },
+    "ph": {
+      "ideal": { "min": 5.5, "max": 6.8 },
+      "critico": { "min": 4.5, "max": 8.0 }
+    },
+    "humedad": {
+      "ideal": { "min": 60, "max": 80 },
+      "critico": { "min": 30, "max": 90 }
+    },
+    "conductividad": {
+      "ideal": { "min": 1.5, "max": 3.0 },
+      "critico": { "min": 0.5, "max": 5.0 }
+    },
+    "npk": {
+      "n": {
+        "ideal": { "min": 50, "max": 100 },
+        "critico": { "min": 30, "max": 150 }
+      },
+      "p": {
+        "ideal": { "min": 30, "max": 60 },
+        "critico": { "min": 15, "max": 80 }
+      },
+      "k": {
+        "ideal": { "min": 40, "max": 80 },
+        "critico": { "min": 20, "max": 100 }
+      }
+    }
+  }
+}

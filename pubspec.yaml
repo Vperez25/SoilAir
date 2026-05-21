@@ -1,0 +1,48 @@
+name: soilair
+description: A Flutter project for soil and air quality monitoring.
+
+publish_to: 'none'
+
+version: 0.0.1+1
+
+environment:
+  sdk: '>=2.19.4 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  english_words: ^4.0.0
+  provider: ^6.0.0
+  fl_chart: ^1.0.0
+  path_provider: ^2.0.0
+  path: ^1.8.3
+  sqflite: ^2.2.5+1
+  sqflite_common_ffi: ^2.3.2+1
+  http: ^1.6.0
+  connectivity_plus: ^4.0.2
+  wifi_scan: ^0.4.1         # escaneo automático de redes SOILAIR_*
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+  flutter_launcher_icons: ^0.14.4
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/jsondata/
+    - assets/plants/
+    - assets/icons/
+
+  fonts:
+    - family: CrimsonText
+      fonts:
+        - asset: assets/fonts/CrimsonText-Regular.ttf
+        - asset: assets/fonts/CrimsonText-Bold.ttf
+          weight: 700
+
+flutter_icons:
+  android: true
+  ios: true
+  image_path: "assets/icons/playstore.png"

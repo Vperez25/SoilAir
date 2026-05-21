@@ -1,0 +1,50 @@
+{
+  "id": "maiz",
+  "nombre": "Maíz",
+  "ambiente": {
+    "temperatura": {
+      "ideal": { "min": 21, "max": 27 },
+      "critico": { "min": 10, "max": 39 }
+    },
+    "humedad_relativa": {
+      "ideal": { "min": 60, "max": 70 },
+      "critico": { "min": 30, "max": 90 }
+    },
+    "radiacion": {
+      "ideal": { "min": 600, "max": 1200 },
+      "critico": { "min": 400, "max": 1500 }
+    }
+  },
+  "suelo": {
+    "temperatura": {
+      "ideal": { "min": 29, "max": 32 },
+      "critico": { "min": 10, "max": 35 }
+    },
+    "ph": {
+      "ideal": { "min": 6.0, "max": 7.2 },
+      "critico": { "min": 5.0, "max": 8.0 }
+    },
+    "humedad": {
+      "ideal": { "min": 50, "max": 80 },
+      "critico": { "min": 30, "max": 90 }
+    },
+    "conductividad": {
+      "ideal": { "min": 0.5, "max": 3.0 },
+      "critico": { "min": 0.2, "max": 5.0 }
+    },
+    "npk": {
+      "n": {
+        "ideal": { "min": 100, "max": 150 },
+        "critico": { "min": 50, "max": 200 }
+      },
+      "p": {
+        "ideal": { "min": 40, "max": 80 },
+        "critico": { "min": 10, "max": 120 }
+      },
+      "k": {
+        "ideal": { "min": 40, "max": 120 },
+        "critico": { "min": 20, "max": 200 }
+      }
+    }
+  }
+}

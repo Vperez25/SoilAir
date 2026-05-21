@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(flutter *)",
+      "PowerShell(winget *)",
+      "PowerShell(Get-ChildItem *)",
+      "PowerShell(Get-Item \"C:\\\\Program Files\\\\Android\" | Select-Object FullName, LastWriteTime; cmd /c \"dir /a \"\"C:\\\\Program Files\\\\Android\"\"\")",
+      "PowerShell(cmd /c \"dir /a \"\"C:\\\\Program Files\\\\Android\\\\Android Studio\"\"\"; cmd /c \"dir /a \"\"$env:USERPROFILE\\\\AppData\\\\Local\\\\Android\"\"\")"
+    ]
+  }
+}

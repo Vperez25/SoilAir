@@ -1,0 +1,50 @@
+{
+  "id": "jitomate",
+  "nombre": "Jitomate",
+  "ambiente": {
+    "temperatura": {
+      "ideal": { "min": 23, "max": 25 },
+      "critico": { "min": 8, "max": 30 }
+    },
+    "humedad_relativa": {
+      "ideal": { "min": 60, "max": 70 },
+      "critico": { "min": 40, "max": 90 }
+    },
+    "radiacion": {
+      "ideal": { "min": 800, "max": 1000 },
+      "critico": { "min": 500, "max": 1200 }
+    }
+  },
+  "suelo": {
+    "temperatura": {
+      "ideal": { "min": 20, "max": 25 },
+      "critico": { "min": 12, "max": 35 }
+    },
+    "ph": {
+      "ideal": { "min": 6.0, "max": 6.8 },
+      "critico": { "min": 5.0, "max": 7.5 }
+    },
+    "humedad": {
+      "ideal": { "min": 60, "max": 80 },
+      "critico": { "min": 30, "max": 90 }
+    },
+    "conductividad": {
+      "ideal": { "min": 0, "max": 2.5 },
+      "critico": { "min": 0, "max": 5.0 }
+    },
+    "npk": {
+      "n": {
+        "ideal": { "min": 100, "max": 150 },
+        "critico": { "min": 50, "max": 300 }
+      },
+      "p": {
+        "ideal": { "min": 65, "max": 110 },
+        "critico": { "min": 20, "max": 200 }
+      },
+      "k": {
+        "ideal": { "min": 160, "max": 240 },
+        "critico": { "min": 50, "max": 400 }
+      }
+    }
+  }
+}

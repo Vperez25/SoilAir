@@ -1,0 +1,50 @@
+{
+  "id": "trigo",
+  "nombre": "Trigo",
+  "ambiente": {
+    "temperatura": {
+      "ideal": { "min": 10, "max": 24 },
+      "critico": { "min": 3, "max": 35 }
+    },
+    "humedad_relativa": {
+      "ideal": { "min": 40, "max": 70 },
+      "critico": { "min": 20, "max": 90 }
+    },
+    "radiacion": {
+      "ideal": { "min": 900, "max": 1400 },
+      "critico": { "min": 500, "max": 1600 }
+    }
+  },
+  "suelo": {
+    "temperatura": {
+      "ideal": { "min": 15, "max": 24 },
+      "critico": { "min": 5, "max": 32 }
+    },
+    "ph": {
+      "ideal": { "min": 5.5, "max": 7.5 },
+      "critico": { "min": 5.0, "max": 8.0 }
+    },
+    "humedad": {
+      "ideal": { "min": 20, "max": 40 },
+      "critico": { "min": 10, "max": 50 }
+    },
+    "conductividad": {
+      "ideal": { "min": 0, "max": 6.0 },
+      "critico": { "min": 0, "max": 8.0 }
+    },
+    "npk": {
+      "n": {
+        "ideal": { "min": 150, "max": 200 },
+        "critico": { "min": 50, "max": 300 }
+      },
+      "p": {
+        "ideal": { "min": 40, "max": 70 },
+        "critico": { "min": 10, "max": 120 }
+      },
+      "k": {
+        "ideal": { "min": 200, "max": 300 },
+        "critico": { "min": 50, "max": 400 }
+      }
+    }
+  }
+}

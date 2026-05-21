@@ -1,0 +1,50 @@
+{
+  "id": "cebada",
+  "nombre": "Cebada",
+  "ambiente": {
+    "temperatura": {
+      "ideal": { "min": 13, "max": 21 },
+      "critico": { "min": -5, "max": 32 }
+    },
+    "humedad_relativa": {
+      "ideal": { "min": 50, "max": 70 },
+      "critico": { "min": 30, "max": 90 }
+    },
+    "radiacion": {
+      "ideal": { "min": 600, "max": 900 },
+      "critico": { "min": 400, "max": 1200 }
+    }
+  },
+  "suelo": {
+    "temperatura": {
+      "ideal": { "min": 10, "max": 20 },
+      "critico": { "min": 5, "max": 30 }
+    },
+    "ph": {
+      "ideal": { "min": 6.0, "max": 7.5 },
+      "critico": { "min": 5.0, "max": 8.3 }
+    },
+    "humedad": {
+      "ideal": { "min": 50, "max": 75 },
+      "critico": { "min": 30, "max": 90 }
+    },
+    "conductividad": {
+      "ideal": { "min": 1.0, "max": 2.5 },
+      "critico": { "min": 0.5, "max": 4.0 }
+    },
+    "npk": {
+      "n": {
+        "ideal": { "min": 80, "max": 120 },
+        "critico": { "min": 50, "max": 150 }
+      },
+      "p": {
+        "ideal": { "min": 40, "max": 60 },
+        "critico": { "min": 10, "max": 60 }
+      },
+      "k": {
+        "ideal": { "min": 40, "max": 80 },
+        "critico": { "min": 20, "max": 120 }
+      }
+    }
+  }
+}
