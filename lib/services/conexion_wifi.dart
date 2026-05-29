@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:http/http.dart' as http;
 
 /// Clase para devolver resultados de sincronización
@@ -16,6 +17,40 @@ class ResultadoSincronizacion {
 
 class ConexionWiFi {
   final String baseUrl = "http://192.168.4.1";
+
+  // ── Claim / propiedad ────────────────────────────────────────
+
+  /// Consulta si el nodo está reclamado. Retorna {"claimed": bool}.
+  Future<Map<String, dynamic>> getClaim() async {
+    final response = await http
+        .get(Uri.parse("$baseUrl/claim"))
+        .timeout(const Duration(seconds: 5));
+    if (response.statusCode != 200) throw Exception("Error claim: ${response.statusCode}");
+    return jsonDecode(response.body) as Map<String, dynamic>;
+  }
+
+  /// Intenta reclamar el nodo con el token dado.
+  /// Retorna true si OK (nuevo o ya es nuestro), false si bloqueado por otro.
+  Future<bool> setClaim(String token) async {
+    final response = await http
+        .post(
+          Uri.parse("$baseUrl/claim"),
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({'token': token}),
+        )
+        .timeout(const Duration(seconds: 5));
+    return response.statusCode == 200;
+  }
+
+  /// Libera el claim (requiere el token correcto).
+  /// Retorna true si liberado, false si el token no coincide.
+  Future<bool> deleteClaim(String token) async {
+    final request = http.Request('DELETE', Uri.parse("$baseUrl/claim"));
+    request.headers[HttpHeaders.contentTypeHeader] = 'application/json';
+    request.body = jsonEncode({'token': token});
+    final streamed = await request.send().timeout(const Duration(seconds: 5));
+    return streamed.statusCode == 200;
+  }
 
   /// Listar archivos
   Future<List<String>> listarArchivos() async {

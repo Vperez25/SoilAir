@@ -19,7 +19,7 @@ class SensorCard extends StatelessWidget {
   });
 
   Color determineColor() {
-    if (cultivo == null || paramKey == null) return Colors.grey;
+    if (cultivo == null || paramKey == null) return Colors.blueGrey.shade400;
 
     final double? val = double.tryParse(value);
     if (val == null) return Colors.grey;
@@ -61,7 +61,7 @@ class SensorCard extends StatelessWidget {
       width: 120,
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: bgColor.withOpacity(0.15),
+        color: bgColor.withValues(alpha: 0.15),
         border: Border.all(color: bgColor, width: 1.5),
         borderRadius: BorderRadius.circular(10),
       ),
@@ -83,7 +83,7 @@ class SensorCard extends StatelessWidget {
                   text: unit.isNotEmpty ? ' $unit' : '',
                   style: TextStyle(
                     fontSize: 13,
-                    color: bgColor.withOpacity(0.7),
+                    color: bgColor.withValues(alpha: 0.7),
                   ),
                 )
               ],

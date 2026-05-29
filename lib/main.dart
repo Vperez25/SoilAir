@@ -1,12 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:soilair/l10n/app_strings.dart';
 import 'package:soilair/services/database.dart';
 import 'package:soilair/services/plants_reader.dart';
 import 'package:soilair/screens/dashboard_screen.dart';
-import 'package:soilair/screens/admin_sensors_screen.dart';
+import 'package:soilair/screens/sensores_screen.dart';
 import 'package:soilair/screens/suggestions_screen.dart';
-import 'package:soilair/screens/conexion_screen.dart';
 import 'package:soilair/screens/historial_screen.dart';
+import 'package:soilair/screens/configuracion_screen.dart';
 import 'theme/app_light_theme.dart';
+
+final ValueNotifier<ThemeMode> appThemeMode = ValueNotifier(ThemeMode.light);
+final ValueNotifier<String>    appLanguage  = ValueNotifier('es');
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -25,11 +29,19 @@ class SoilAirApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'SoilAir',
-      theme: AppLightTheme.themeData,
-      debugShowCheckedModeBanner: false,
-      home: const MainNavigation(),
+    return ValueListenableBuilder<ThemeMode>(
+      valueListenable: appThemeMode,
+      builder: (_, mode, __) => ValueListenableBuilder<String>(
+        valueListenable: appLanguage,
+        builder: (_, __, ___) => MaterialApp(
+          title: 'SoilAir',
+          theme: AppLightTheme.themeData,
+          darkTheme: AppLightTheme.darkThemeData,
+          themeMode: mode,
+          debugShowCheckedModeBanner: false,
+          home: const MainNavigation(),
+        ),
+      ),
     );
   }
 }
@@ -43,31 +55,30 @@ class MainNavigation extends StatefulWidget {
 class _MainNavigationState extends State<MainNavigation> {
   int _selectedIndex = 0;
 
-  final List<Widget> _screens = const [
+  static const List<Widget> _screens = [
     DashboardScreen(),
     HistorialScreen(),
-    AdminSensorsScreen(),
+    SensoresScreen(),
     SugerenciasScreen(),
-    ConexionScreen(),
-  ];
-
-  final List<BottomNavigationBarItem> _items = const [
-    BottomNavigationBarItem(icon: Icon(Icons.dashboard),  label: 'Dashboard'),
-    BottomNavigationBarItem(icon: Icon(Icons.show_chart), label: 'Historial'),
-    BottomNavigationBarItem(icon: Icon(Icons.sensors),    label: 'Sensores'),
-    BottomNavigationBarItem(icon: Icon(Icons.lightbulb),  label: 'Sugerencias'),
-    BottomNavigationBarItem(icon: Icon(Icons.wifi),       label: 'Conectar'),
+    ConfiguracionScreen(),
   ];
 
   @override
   Widget build(BuildContext context) {
+    final s = AppStrings.of(appLanguage.value);
     return Scaffold(
       body: _screens[_selectedIndex],
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _selectedIndex,
-        items: _items,
         type: BottomNavigationBarType.fixed,
-        onTap: (index) => setState(() => _selectedIndex = index),
+        onTap: (i) => setState(() => _selectedIndex = i),
+        items: [
+          BottomNavigationBarItem(icon: const Icon(Icons.dashboard),  label: s.navDashboard),
+          BottomNavigationBarItem(icon: const Icon(Icons.show_chart), label: s.navHistorial),
+          BottomNavigationBarItem(icon: const Icon(Icons.sensors),    label: s.navSensores),
+          BottomNavigationBarItem(icon: const Icon(Icons.lightbulb),  label: s.navSugerencias),
+          BottomNavigationBarItem(icon: const Icon(Icons.settings),   label: s.navAjustes),
+        ],
       ),
     );
   }

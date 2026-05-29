@@ -1,3 +1,4 @@
+import 'dart:math';
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 
@@ -17,7 +18,7 @@ class DatabaseHelper {
   Future<Database> _initDB() async {
     final dbPath = await getDatabasesPath();
     final path = join(dbPath, 'soilair.db');
-    return await openDatabase(path, version: 5, onCreate: _onCreate, onUpgrade: _onUpgrade);
+    return await openDatabase(path, version: 8, onCreate: _onCreate, onUpgrade: _onUpgrade);
   }
 
   // ── Schemas ─────────────────────────────────────────────────
@@ -61,6 +62,8 @@ class DatabaseHelper {
         nombre           TEXT,
         id               TEXT,
         cultivo_asignado INTEGER,
+        oculto           INTEGER DEFAULT 0,
+        ssid             TEXT,
         FOREIGN KEY(id) REFERENCES sensores_primarios(id),
         FOREIGN KEY(cultivo_asignado) REFERENCES cultivos(id)
       )
@@ -71,6 +74,19 @@ class DatabaseHelper {
         timestamp   INTEGER PRIMARY KEY,
         temperatura REAL,
         humedad     REAL
+      )
+    ''');
+    await db.execute('''
+      CREATE TABLE configuracion (
+        id             INTEGER PRIMARY KEY,
+        cultivo_id     INTEGER,
+        cultivo_nombre TEXT,
+        device_token   TEXT
+      )
+    ''');
+    await db.execute('''
+      CREATE TABLE nodos_propietario (
+        ssid TEXT PRIMARY KEY
       )
     ''');
     await db.execute('''
@@ -111,6 +127,23 @@ class DatabaseHelper {
           nombre TEXT, id TEXT, cultivo_asignado INTEGER
         )
       ''');
+    }
+    if (oldVersion < 6) {
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS configuracion (
+          id          INTEGER PRIMARY KEY,
+          cultivo_id  INTEGER,
+          cultivo_nombre TEXT
+        )
+      ''');
+    }
+    if (oldVersion < 7) {
+      await db.execute('ALTER TABLE admin_sensores ADD COLUMN oculto INTEGER DEFAULT 0');
+      await db.execute('ALTER TABLE configuracion ADD COLUMN device_token TEXT');
+      await db.execute('CREATE TABLE IF NOT EXISTS nodos_propietario (ssid TEXT PRIMARY KEY)');
+    }
+    if (oldVersion < 8) {
+      await db.execute('ALTER TABLE admin_sensores ADD COLUMN ssid TEXT');
     }
     if (oldVersion < 5) {
       // sensores_primarios: de PRIMARY KEY en 'id' a rowid autoincrement
@@ -186,6 +219,17 @@ class DatabaseHelper {
     final existing = await db
         .query('admin_sensores', where: 'id = ?', whereArgs: [sensor['id']]);
     if (existing.isEmpty) return await db.insert('admin_sensores', sensor);
+    // If re-syncing a previously desynced sensor, make it visible again.
+    // Also backfill ssid if it wasn't stored before.
+    final updates = <String, dynamic>{};
+    if ((existing.first['oculto'] as int? ?? 0) == 1) updates['oculto'] = 0;
+    if (sensor['ssid'] != null && existing.first['ssid'] == null) {
+      updates['ssid'] = sensor['ssid'];
+    }
+    if (updates.isNotEmpty) {
+      await db.update('admin_sensores', updates,
+          where: 'id = ?', whereArgs: [sensor['id']]);
+    }
     return null;
   }
 
@@ -369,5 +413,197 @@ class DatabaseHelper {
       WHERE a.id = ?
     ''', [sensorId]);
     return r.isNotEmpty ? r.first : null;
+  }
+
+  // ── Configuracion global ─────────────────────────────────────
+
+  Future<Map<String, dynamic>?> getConfiguracion() async {
+    final db = await database;
+    final r = await db.query('configuracion', where: 'id = ?', whereArgs: [1], limit: 1);
+    return r.isNotEmpty ? r.first : null;
+  }
+
+  Future<void> setConfiguracion({int? cultivoId, String? cultivoNombre}) async {
+    final db = await database;
+    await db.insert(
+      'configuracion',
+      {'id': 1, 'cultivo_id': cultivoId, 'cultivo_nombre': cultivoNombre},
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+  }
+
+  Future<Map<String, dynamic>?> getCultivoById(int id) async {
+    final db = await database;
+    final r = await db.query('cultivos', where: 'id = ?', whereArgs: [id], limit: 1);
+    return r.isNotEmpty ? r.first : null;
+  }
+
+  /// IDs distintos de sensores primarios con su último timestamp.
+  Future<List<Map<String, dynamic>>> getTodosSensoresPrimarios() async {
+    final db = await database;
+    return await db.rawQuery('''
+      SELECT id, MAX(timestamp) AS ultimo_timestamp
+      FROM sensores_primarios
+      GROUP BY id
+      ORDER BY id
+    ''');
+  }
+
+  /// Sensores primarios visibles (no ocultos) con su configuración y último timestamp.
+  Future<List<Map<String, dynamic>>> getSensoresPrimarioConConfig() async {
+    final db = await database;
+    return await db.rawQuery('''
+      SELECT
+        sp.id,
+        MAX(sp.timestamp)  AS ultimo_timestamp,
+        a.nombre,
+        a.cultivo_asignado,
+        c.nombre           AS cultivo_nombre
+      FROM sensores_primarios sp
+      LEFT JOIN admin_sensores  a ON a.id  = sp.id
+      LEFT JOIN cultivos        c ON c.id  = a.cultivo_asignado
+      WHERE COALESCE(a.oculto, 0) = 0
+      GROUP BY sp.id
+      ORDER BY sp.id
+    ''');
+  }
+
+  /// Guarda nombre y cultivo de un sensor (siempre sobreescribe ambos campos).
+  Future<void> configurarSensor({
+    required String sensorId,
+    required String nombre,
+    int? cultivoId,
+  }) async {
+    final db = await database;
+    await db.update(
+      'admin_sensores',
+      {'nombre': nombre, 'cultivo_asignado': cultivoId},
+      where: 'id = ?',
+      whereArgs: [sensorId],
+    );
+  }
+
+  /// Nombres configurados de todos los sensores excepto el indicado.
+  Future<List<String>> getNombresExcepto(String sensorId) async {
+    final db = await database;
+    final r = await db.query('admin_sensores',
+        columns: ['nombre'],
+        where: 'id != ? AND nombre IS NOT NULL',
+        whereArgs: [sensorId]);
+    return r.map((row) => row['nombre'] as String).toList();
+  }
+
+  /// IDs distintos de sensores secundarios con su último timestamp.
+  Future<List<Map<String, dynamic>>> getTodosSensoresSecundarios() async {
+    final db = await database;
+    return await db.rawQuery('''
+      SELECT id, sensor_primario_id, MAX(timestamp) AS ultimo_timestamp
+      FROM sensores_secundarios
+      GROUP BY id
+      ORDER BY id
+    ''');
+  }
+
+  // ── Desincronización ─────────────────────────────────────────
+
+  /// Oculta un sensor de la vista de conectados; sus datos históricos permanecen.
+  Future<void> desincronizarSensor(String sensorId) async {
+    final db = await database;
+    final existe = await db.query('admin_sensores',
+        where: 'id = ?', whereArgs: [sensorId], limit: 1);
+    if (existe.isNotEmpty) {
+      await db.update('admin_sensores', {'oculto': 1},
+          where: 'id = ?', whereArgs: [sensorId]);
+    } else {
+      await db.insert('admin_sensores', {'id': sensorId, 'oculto': 1});
+    }
+  }
+
+  // ── Token de dispositivo ─────────────────────────────────────
+
+  String _generarToken() {
+    final r = Random.secure();
+    final bytes = List<int>.generate(16, (_) => r.nextInt(256));
+    return bytes.map((b) => b.toRadixString(16).padLeft(2, '0')).join();
+  }
+
+  /// Obtiene (o genera) el token único permanente de este dispositivo.
+  Future<String> getDeviceToken() async {
+    final db = await database;
+    final r = await db.query('configuracion',
+        where: 'id = ?', whereArgs: [1], limit: 1);
+    if (r.isNotEmpty && r.first['device_token'] != null) {
+      return r.first['device_token'] as String;
+    }
+    final token = _generarToken();
+    if (r.isEmpty) {
+      await db.insert('configuracion', {'id': 1, 'device_token': token});
+    } else {
+      await db.update('configuracion', {'device_token': token},
+          where: 'id = ?', whereArgs: [1]);
+    }
+    return token;
+  }
+
+  // ── Propiedad de nodos ───────────────────────────────────────
+
+  Future<List<String>> getNodosPropietario() async {
+    final db = await database;
+    final r = await db.query('nodos_propietario', columns: ['ssid']);
+    return r.map((row) => row['ssid'] as String).toList();
+  }
+
+  Future<void> marcarNodoPropietario(String ssid) async {
+    final db = await database;
+    await db.insert('nodos_propietario', {'ssid': ssid},
+        conflictAlgorithm: ConflictAlgorithm.ignore);
+  }
+
+  Future<void> liberarNodoPropietario(String ssid) async {
+    final db = await database;
+    await db.delete('nodos_propietario', where: 'ssid = ?', whereArgs: [ssid]);
+  }
+
+  Future<String?> getSsidDeSensor(String sensorId) async {
+    final db = await database;
+    final r = await db.query('admin_sensores',
+        columns: ['ssid'], where: 'id = ?', whereArgs: [sensorId], limit: 1);
+    return r.isNotEmpty ? r.first['ssid'] as String? : null;
+  }
+
+  /// Returns true if [sensorId] is the only active sensor linked to its node SSID.
+  Future<bool> esUltimoSensorDeNodo(String sensorId) async {
+    final db = await database;
+    final r = await db.query('admin_sensores',
+        columns: ['ssid'], where: 'id = ?', whereArgs: [sensorId], limit: 1);
+    if (r.isEmpty || r.first['ssid'] == null) return false;
+    final ssid = r.first['ssid'] as String;
+    final others = await db.query('admin_sensores',
+        where: "ssid = ? AND id != ? AND COALESCE(oculto, 0) = 0",
+        whereArgs: [ssid, sensorId]);
+    return others.isEmpty;
+  }
+
+  /// Releases ownership of the node that sensor [sensorId] came from,
+  /// but only if no other active (non-hidden) sensor is still linked to that SSID.
+  Future<void> liberarNodoPropietarioPorSensor(String sensorId) async {
+    final db = await database;
+    final r = await db.query('admin_sensores',
+        columns: ['ssid'], where: 'id = ?', whereArgs: [sensorId], limit: 1);
+    if (r.isEmpty || r.first['ssid'] == null) return;
+    final ssid = r.first['ssid'] as String;
+    final others = await db.query('admin_sensores',
+        where: "ssid = ? AND id != ? AND COALESCE(oculto, 0) = 0",
+        whereArgs: [ssid, sensorId]);
+    if (others.isEmpty) {
+      await db.delete('nodos_propietario', where: 'ssid = ?', whereArgs: [ssid]);
+    }
+  }
+
+  /// Devuelve un mapa {id → nombre} para todos los sensores en admin_sensores.
+  Future<Map<String, String?>> getNombresSensores() async {
+    final db = await database;
+    final r = await db.query('admin_sensores', columns: ['id', 'nombre']);
+    return {for (final row in r) row['id'] as String: row['nombre'] as String?};
   }
 }

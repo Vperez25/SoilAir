@@ -4,12 +4,14 @@ class BaseScaffold extends StatelessWidget {
   final String title;
   final Widget body;
   final Widget? drawer;
+  final PreferredSizeWidget? bottom;
 
   const BaseScaffold({
     super.key,
     required this.title,
     required this.body,
     this.drawer,
+    this.bottom,
   });
 
   @override
@@ -26,9 +28,10 @@ class BaseScaffold extends StatelessWidget {
             fontWeight: FontWeight.bold,
           ),
         ),
-        backgroundColor: Color(0xFFFAF5EF),
+        backgroundColor: Theme.of(context).colorScheme.surface,
         elevation: 0,
         iconTheme: IconThemeData(color: buttonColor),
+        bottom: bottom,
       ),
       drawer: drawer,
       body: body,

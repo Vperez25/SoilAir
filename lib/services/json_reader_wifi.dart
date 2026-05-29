@@ -2,10 +2,15 @@ import 'dart:convert';
 import 'package:soilair/services/database.dart';
 
 class JsonReaderWiFi {
+  final String? ssid;
+  JsonReaderWiFi({this.ssid});
+
   Future<void> importJsonFromString(String jsonString) async {
     final db = DatabaseHelper();
     final data = jsonDecode(jsonString) as Map<String, dynamic>;
-    final int timestamp = data['timestamp'] as int;
+    // ESP32 uses millis()/1000 (seconds since boot), not a real Unix timestamp.
+    // We replace it with the phone's current time so date filters work correctly.
+    final int timestamp = DateTime.now().millisecondsSinceEpoch ~/ 1000;
 
     double _parse(dynamic v) {
       if (v == null) return 0.0;
@@ -41,20 +46,28 @@ class JsonReaderWiFi {
           'id': s['id'],
           'nombre': null,
           'cultivo_asignado': null,
+          if (ssid != null) 'ssid': ssid,
         });
       }
     }
 
     // Secundarios: INSERT sin replace → acumula historial
+    // sensor_primario_id se deduce por convención: s1,s2→p1 | s3,s4→p2 | …
     if (data['secundarios'] != null) {
       for (final s in data['secundarios'] as List) {
+        final secId = s['id'] as String;
+        String? primarioId;
+        if (secId.startsWith('s')) {
+          final n = int.tryParse(secId.substring(1));
+          if (n != null) primarioId = 'p${((n - 1) ~/ 2) + 1}';
+        }
         await db.insertSensorSecundario({
-          'id': s['id'],
+          'id': secId,
           'timestamp': timestamp,
           'ec': _parse(s['ec']),
           'humedad': _parse(s['humedad']),
           'temperatura': _parse(s['temperatura']),
-          // sensor_primario_id se asigna desde la pantalla de configuración
+          if (primarioId != null) 'sensor_primario_id': primarioId,
         });
       }
     }

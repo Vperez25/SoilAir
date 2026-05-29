@@ -9,7 +9,7 @@ class WifiNativoService {
   /// Lanza [WifiException] si falla o el dispositivo es Android < 10.
   Future<void> conectar({
     required String ssid,
-    String password = 'momomomo',
+    String password = 'soilair1',
   }) async {
     try {
       await _channel.invokeMethod<String>('conectarWifi', {

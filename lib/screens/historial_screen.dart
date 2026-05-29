@@ -1,27 +1,43 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:soilair/l10n/app_strings.dart';
+import 'package:soilair/main.dart';
 import 'package:soilair/services/database.dart';
 import 'package:soilair/theme/app_light_theme.dart';
 import 'package:soilair/widgets/base_scaffold.dart';
 
-// ── Modelos ────────────────────────────────────────────────────
+// ── Modelo de variable ─────────────────────────────────────────
 
 class _Variable {
   final String campo;
   final String etiqueta;
   final String unidad;
   final Color color;
-  const _Variable({required this.campo, required this.etiqueta, required this.unidad, required this.color});
+  const _Variable({
+    required this.campo,
+    required this.etiqueta,
+    required this.unidad,
+    required this.color,
+  });
 }
 
-class _SensorOpcion {
-  final String id;
-  final String nombre;
-  final bool esPrimario;
-  const _SensorOpcion({required this.id, required this.nombre, required this.esPrimario});
-}
+List<_Variable> _varsPrimario(AppStrings s) => [
+  _Variable(campo: 'humedad',     etiqueta: s.humedadSuelo,   unidad: '%',     color: const Color(0xFF378ADD)),
+  _Variable(campo: 'temperatura', etiqueta: s.tempSuelo,      unidad: '°C',    color: const Color(0xFFD85A30)),
+  _Variable(campo: 'ph',          etiqueta: 'pH',              unidad: '',      color: const Color(0xFF7F77DD)),
+  _Variable(campo: 'ec',          etiqueta: s.conductividad,   unidad: 'mS/cm', color: const Color(0xFF639922)),
+  _Variable(campo: 'n',           etiqueta: s.nitrogeno,       unidad: 'mg/kg', color: const Color(0xFF1D9E75)),
+  _Variable(campo: 'p',           etiqueta: s.fosforo,         unidad: 'mg/kg', color: const Color(0xFFBA7517)),
+  _Variable(campo: 'k',           etiqueta: s.potasio,         unidad: 'mg/kg', color: const Color(0xFFD4537E)),
+  _Variable(campo: 'radiacion',   etiqueta: s.radiacion,       unidad: 'lux',   color: const Color(0xFFEF9F27)),
+];
 
-// ── Pantalla ───────────────────────────────────────────────────
+List<_Variable> _varsAmbiental(AppStrings s) => [
+  _Variable(campo: 'temperatura', etiqueta: s.tempAire,    unidad: '°C', color: const Color(0xFFD85A30)),
+  _Variable(campo: 'humedad',     etiqueta: s.humedadAire, unidad: '%',  color: const Color(0xFF378ADD)),
+];
+
+// ── Pantalla principal ─────────────────────────────────────────
 
 class HistorialScreen extends StatefulWidget {
   const HistorialScreen({super.key});
@@ -31,40 +47,10 @@ class HistorialScreen extends StatefulWidget {
 
 class _HistorialScreenState extends State<HistorialScreen> {
   final _db = DatabaseHelper();
-
-  List<_SensorOpcion> _sensores = [];
-  _SensorOpcion? _sensorSel;
-  _Variable? _varSel;
-
-  static const _varsPrimario = [
-    _Variable(campo: 'humedad',     etiqueta: 'Humedad suelo', unidad: '%',     color: Color(0xFF378ADD)),
-    _Variable(campo: 'temperatura', etiqueta: 'Temp. suelo',   unidad: '°C',    color: Color(0xFFD85A30)),
-    _Variable(campo: 'ph',          etiqueta: 'pH',             unidad: '',      color: Color(0xFF7F77DD)),
-    _Variable(campo: 'ec',          etiqueta: 'Conductividad',  unidad: 'mS/cm', color: Color(0xFF639922)),
-    _Variable(campo: 'n',           etiqueta: 'Nitrógeno',      unidad: 'mg/kg', color: Color(0xFF1D9E75)),
-    _Variable(campo: 'p',           etiqueta: 'Fósforo',        unidad: 'mg/kg', color: Color(0xFFBA7517)),
-    _Variable(campo: 'k',           etiqueta: 'Potasio',        unidad: 'mg/kg', color: Color(0xFFD4537E)),
-    _Variable(campo: 'radiacion',   etiqueta: 'Radiación',      unidad: 'lux',   color: Color(0xFFEF9F27)),
-  ];
-
-  static const _varsSecundario = [
-    _Variable(campo: 'humedad',     etiqueta: 'Humedad',       unidad: '%',     color: Color(0xFF378ADD)),
-    _Variable(campo: 'temperatura', etiqueta: 'Temperatura',   unidad: '°C',    color: Color(0xFFD85A30)),
-    _Variable(campo: 'ec',          etiqueta: 'Conductividad', unidad: 'mS/cm', color: Color(0xFF639922)),
-  ];
-
-  static const _varsAmbiental = [
-    _Variable(campo: 'temperatura', etiqueta: 'Temp. aire',   unidad: '°C', color: Color(0xFFD85A30)),
-    _Variable(campo: 'humedad',     etiqueta: 'Humedad aire', unidad: '%',  color: Color(0xFF378ADD)),
-  ];
-
-  static const _rangos = ['7 días', '30 días', '90 días', 'Todo'];
-  String _rango = '30 días';
-
-  List<FlSpot> _puntos = [];
-  List<int> _timestamps = [];
-  bool _cargando = false;
-  String? _error;
+  int _rangoIdx = 1; // índice en la lista de rangos
+  List<String> _idsPrimarios = [];
+  Map<String, String?> _nombresSensores = {};
+  bool _cargando = true;
 
   @override
   void initState() {
@@ -72,56 +58,200 @@ class _HistorialScreenState extends State<HistorialScreen> {
     _cargarSensores();
   }
 
-  List<_Variable> _varsParaSensor(_SensorOpcion s) {
-    if (s.id == '__ambiental__') return _varsAmbiental;
-    if (s.esPrimario) return _varsPrimario;
-    return _varsSecundario;
+  Future<void> _cargarSensores() async {
+    final ids = await _db.getTodosSensoresPrimarios();
+    final nombres = await _db.getNombresSensores();
+    setState(() {
+      _idsPrimarios = ids.map((r) => r['id'] as String).toList();
+      _nombresSensores = nombres;
+      _cargando = false;
+    });
   }
 
-  Future<void> _cargarSensores() async {
-    final primarios = await _db.getSensoresConNombre();
-    final secundariosRaw = await _db.getSensoresSecundariosConPrimario();
+  String _nombreSensor(String id, AppStrings s) {
+    final nombre = _nombresSensores[id];
+    if (nombre != null) return nombre;
+    if (id.startsWith('p')) {
+      final n = id.substring(1);
+      return n == '1' ? s.sensorPrincipal : s.sensorN(int.tryParse(n) ?? 0);
+    }
+    return id;
+  }
 
-    final lista = <_SensorOpcion>[
-      const _SensorOpcion(id: '__ambiental__', nombre: 'Ambiente (aire)', esPrimario: false),
-      ...primarios.map((s) => _SensorOpcion(
-            id: s['id'] as String,
-            nombre: s['nombre'] as String? ?? s['id'] as String,
-            esPrimario: true)),
-      ...secundariosRaw.map((s) => _SensorOpcion(
-            id: s['sec_id'] as String,
-            nombre: s['primario_nombre'] != null
-                ? '${s['primario_nombre']} › ${s['sec_id']}'
-                : s['sec_id'] as String,
-            esPrimario: false)),
-    ];
+  @override
+  Widget build(BuildContext context) {
+    final s = AppStrings.of(appLanguage.value);
+    final rangos = [s.rangoSemana, s.rangoTreinta, s.rangoNoventa, s.rangoTodo];
 
-    setState(() {
-      _sensores = lista;
-      if (lista.isNotEmpty) {
-        _sensorSel = lista.first;
-        _varSel = _varsParaSensor(lista.first).first;
-      }
-    });
-    if (_sensorSel != null) _cargarDatos();
+    return BaseScaffold(
+      title: s.navHistorial,
+      body: Column(children: [
+        _barraRango(s, rangos),
+        const Divider(height: 1),
+        Expanded(
+          child: _cargando
+            ? const Center(child: CircularProgressIndicator())
+            : ListView(
+                padding: const EdgeInsets.only(bottom: 24),
+                children: [
+                  _SensorSection(
+                    titulo: s.condicionesAmbientales,
+                    sensorId: '__ambiental__',
+                    esPrimario: false,
+                    vars: _varsAmbiental(s),
+                    rango: rangos[_rangoIdx],
+                    s: s,
+                  ),
+                  ..._idsPrimarios.map((id) => _SensorSection(
+                    titulo: _nombreSensor(id, s),
+                    sensorId: id,
+                    esPrimario: true,
+                    vars: _varsPrimario(s),
+                    rango: rangos[_rangoIdx],
+                    s: s,
+                  )),
+                  if (_idsPrimarios.isEmpty)
+                    Padding(
+                      padding: const EdgeInsets.all(32),
+                      child: Column(children: [
+                        Icon(Icons.sensors_off, size: 48,
+                            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.3)),
+                        const SizedBox(height: 12),
+                        Text(s.sinSensoresRegistrados,
+                            style: TextStyle(
+                                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.55))),
+                        const SizedBox(height: 6),
+                        Text(s.sincronizaParaLecturas,
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                                fontSize: 12,
+                                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45))),
+                      ]),
+                    ),
+                ],
+              ),
+        ),
+      ]),
+    );
+  }
+
+  Widget _barraRango(AppStrings s, List<String> rangos) {
+    final primary   = Theme.of(context).colorScheme.primary;
+    final onSurface = Theme.of(context).colorScheme.onSurface;
+    final outline   = Theme.of(context).colorScheme.outline;
+
+    return Container(
+      color: Theme.of(context).cardColor,
+      padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
+      child: Row(children: [
+        Text('${s.periodo}:',
+            style: TextStyle(fontSize: 12, color: onSurface.withValues(alpha: 0.5))),
+        const SizedBox(width: 10),
+        Expanded(
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: List.generate(rangos.length, (i) {
+                final sel = i == _rangoIdx;
+                return Padding(
+                  padding: const EdgeInsets.only(right: 6),
+                  child: GestureDetector(
+                    onTap: () => setState(() => _rangoIdx = i),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: sel ? primary.withValues(alpha: 0.12) : Colors.transparent,
+                        border: Border.all(
+                            color: sel ? primary : outline.withValues(alpha: 0.4)),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(rangos[i], style: TextStyle(
+                        fontSize: 12,
+                        color: sel ? primary : onSurface.withValues(alpha: 0.55),
+                        fontWeight: sel ? FontWeight.w600 : FontWeight.normal,
+                      )),
+                    ),
+                  ),
+                );
+              }),
+            ),
+          ),
+        ),
+      ]),
+    );
+  }
+}
+
+// ── Sección por sensor ─────────────────────────────────────────
+
+class _SensorSection extends StatefulWidget {
+  final String titulo;
+  final String sensorId;
+  final bool esPrimario;
+  final List<_Variable> vars;
+  final String rango;
+  final AppStrings s;
+
+  const _SensorSection({
+    required this.titulo,
+    required this.sensorId,
+    required this.esPrimario,
+    required this.vars,
+    required this.rango,
+    required this.s,
+  });
+
+  @override
+  State<_SensorSection> createState() => _SensorSectionState();
+}
+
+class _SensorSectionState extends State<_SensorSection> {
+  final _db = DatabaseHelper();
+  late String _campSel;
+  List<FlSpot> _puntos = [];
+  List<int> _timestamps = [];
+  bool _cargando = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _campSel = widget.vars.first.campo;
+    _cargarDatos();
+  }
+
+  @override
+  void didUpdateWidget(covariant _SensorSection oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.rango != widget.rango) _cargarDatos();
+  }
+
+  _Variable get _varSel =>
+      widget.vars.firstWhere((v) => v.campo == _campSel,
+          orElse: () => widget.vars.first);
+
+  DateTime? _fechaDesde() {
+    final ahora = DateTime.now();
+    final s = widget.s;
+    if (widget.rango == s.rangoSemana)   return ahora.subtract(const Duration(days: 7));
+    if (widget.rango == s.rangoTreinta)  return ahora.subtract(const Duration(days: 30));
+    if (widget.rango == s.rangoNoventa)  return ahora.subtract(const Duration(days: 90));
+    return null;
   }
 
   Future<void> _cargarDatos() async {
-    if (_sensorSel == null || _varSel == null) return;
-    setState(() { _cargando = true; _error = null; });
-
+    setState(() => _cargando = true);
     try {
       final desde = _fechaDesde();
       List<Map<String, dynamic>> filas;
 
-      if (_sensorSel!.id == '__ambiental__') {
+      if (widget.sensorId == '__ambiental__') {
         filas = await _db.getHistorialAmbiental(limite: 200, desde: desde);
-      } else if (_sensorSel!.esPrimario) {
-        filas = await _db.getHistorialSensorPrimario(
-            sensorId: _sensorSel!.id, campo: _varSel!.campo, limite: 200, desde: desde);
       } else {
-        filas = await _db.getHistorialSensorSecundario(
-            sensorId: _sensorSel!.id, campo: _varSel!.campo, limite: 200, desde: desde);
+        filas = await _db.getHistorialSensorPrimario(
+            sensorId: widget.sensorId,
+            campo: _varSel.campo,
+            limite: 200,
+            desde: desde);
       }
 
       if (filas.isEmpty) {
@@ -132,105 +262,78 @@ class _HistorialScreenState extends State<HistorialScreen> {
       _timestamps = filas.map((f) => f['timestamp'] as int).toList();
       final puntos = <FlSpot>[];
       for (int i = 0; i < filas.length; i++) {
-        final raw = filas[i][_varSel!.campo];
-        final double? y = raw is num ? raw.toDouble() : double.tryParse(raw.toString());
+        final raw = filas[i][_varSel.campo];
+        final double? y =
+            raw is num ? raw.toDouble() : double.tryParse(raw.toString());
         if (y != null && y.isFinite) puntos.add(FlSpot(i.toDouble(), y));
       }
       setState(() { _puntos = puntos; _cargando = false; });
-    } catch (e) {
-      setState(() { _error = 'Error cargando datos: $e'; _cargando = false; });
-    }
-  }
-
-  DateTime? _fechaDesde() {
-    final ahora = DateTime.now();
-    switch (_rango) {
-      case '7 días':  return ahora.subtract(const Duration(days: 7));
-      case '30 días': return ahora.subtract(const Duration(days: 30));
-      case '90 días': return ahora.subtract(const Duration(days: 90));
-      default:        return null;
+    } catch (_) {
+      setState(() { _puntos = []; _cargando = false; });
     }
   }
 
   String _etiquetaX(int idx) {
     if (idx < 0 || idx >= _timestamps.length) return '';
     final dt = DateTime.fromMillisecondsSinceEpoch(_timestamps[idx] * 1000);
-    if (_rango == '7 días') return '${dt.day}/${dt.month}\n${_p(dt.hour)}:${_p(dt.minute)}';
+    final s = widget.s;
+    if (widget.rango == s.rangoSemana)
+      return '${dt.day}/${dt.month}\n${_p(dt.hour)}:${_p(dt.minute)}';
     return '${dt.day}/${dt.month}';
   }
 
   String _p(int n) => n.toString().padLeft(2, '0');
 
-  // ── Build ───────────────────────────────────────────────────
-
   @override
-  Widget build(BuildContext context) => BaseScaffold(
-    title: 'Historial',
-    body: Column(children: [
-      _panelFiltros(),
-      const Divider(height: 1),
-      Expanded(child: _cuerpo()),
-    ]),
-  );
+  Widget build(BuildContext context) {
+    final s = widget.s;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 20, 16, 8),
+          child: Row(children: [
+            Icon(widget.esPrimario ? Icons.sensors : Icons.air,
+                size: 18, color: AppLightTheme.botonPrincipal),
+            const SizedBox(width: 8),
+            Text(widget.titulo,
+                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+          ]),
+        ),
 
-  Widget _panelFiltros() {
-    final vars = _sensorSel != null ? _varsParaSensor(_sensorSel!) : <_Variable>[];
-    return Container(
-      color: Theme.of(context).cardColor,
-      padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        // Selector de sensor
-        Row(children: [
-          const Icon(Icons.sensors, size: 16, color: AppLightTheme.botonPrincipal),
-          const SizedBox(width: 6),
-          const Text('Sensor', style: TextStyle(fontSize: 12, color: Colors.grey)),
-          const SizedBox(width: 8),
-          Expanded(
-            child: DropdownButtonHideUnderline(
-              child: DropdownButton<_SensorOpcion>(
-                value: _sensorSel,
-                isExpanded: true,
-                style: const TextStyle(fontSize: 13, color: Colors.black87),
-                items: _sensores.map((s) => DropdownMenuItem(
-                  value: s,
-                  child: Text(s.nombre, overflow: TextOverflow.ellipsis),
-                )).toList(),
-                onChanged: (s) {
-                  if (s == null) return;
-                  setState(() { _sensorSel = s; _varSel = _varsParaSensor(s).first; });
-                  _cargarDatos();
-                },
-              ),
-            ),
-          ),
-        ]),
-
-        const SizedBox(height: 8),
-
-        // Chips de variable
         SizedBox(
-          height: 32,
+          height: 34,
           child: ListView.separated(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
             scrollDirection: Axis.horizontal,
-            itemCount: vars.length,
+            itemCount: widget.vars.length,
             separatorBuilder: (_, __) => const SizedBox(width: 6),
             itemBuilder: (_, i) {
-              final v = vars[i];
-              final sel = v.campo == _varSel?.campo;
+              final v = widget.vars[i];
+              final sel = v.campo == _campSel;
               return GestureDetector(
-                onTap: () { setState(() => _varSel = v); _cargarDatos(); },
+                onTap: () {
+                  setState(() => _campSel = v.campo);
+                  _cargarDatos();
+                },
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 180),
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
-                    color: sel ? v.color.withOpacity(0.15) : Colors.transparent,
-                    border: Border.all(color: sel ? v.color : Colors.grey.shade300, width: sel ? 1.5 : 1),
+                    color: sel ? v.color.withValues(alpha: 0.15) : Colors.transparent,
+                    border: Border.all(
+                        color: sel
+                            ? v.color
+                            : Theme.of(context).colorScheme.outline.withValues(alpha: 0.4),
+                        width: sel ? 1.5 : 1),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text(v.etiqueta, style: TextStyle(
                     fontSize: 12,
                     fontWeight: sel ? FontWeight.w600 : FontWeight.normal,
-                    color: sel ? v.color : Colors.grey.shade600,
+                    color: sel
+                        ? v.color
+                        : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                   )),
                 ),
               );
@@ -238,214 +341,204 @@ class _HistorialScreenState extends State<HistorialScreen> {
           ),
         ),
 
-        const SizedBox(height: 8),
-
-        // Chips de rango
-        SizedBox(
-          height: 28,
-          child: ListView.separated(
-            scrollDirection: Axis.horizontal,
-            itemCount: _rangos.length,
-            separatorBuilder: (_, __) => const SizedBox(width: 6),
-            itemBuilder: (_, i) {
-              final r = _rangos[i];
-              final sel = r == _rango;
-              return GestureDetector(
-                onTap: () { setState(() => _rango = r); _cargarDatos(); },
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: sel ? AppLightTheme.botonPrincipal.withOpacity(0.12) : Colors.transparent,
-                    border: Border.all(color: sel ? AppLightTheme.botonPrincipal : Colors.grey.shade300),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Text(r, style: TextStyle(
-                    fontSize: 11,
-                    color: sel ? AppLightTheme.botonPrincipal : Colors.grey.shade500,
-                    fontWeight: sel ? FontWeight.w600 : FontWeight.normal,
-                  )),
-                ),
-              );
-            },
-          ),
-        ),
-      ]),
-    );
-  }
-
-  Widget _cuerpo() {
-    if (_cargando) return const Center(child: CircularProgressIndicator());
-    if (_error != null) return Center(child: Text(_error!, style: const TextStyle(color: Colors.red)));
-    if (_puntos.isEmpty) return Center(
-      child: Column(mainAxisSize: MainAxisSize.min, children: [
-        Icon(Icons.show_chart, size: 52, color: Colors.grey.shade300),
         const SizedBox(height: 12),
-        Text('Sin datos para este período', style: TextStyle(color: Colors.grey.shade500)),
-        const SizedBox(height: 6),
-        Text('Sincroniza con un nodo para empezar a acumular lecturas.',
-            style: TextStyle(fontSize: 12, color: Colors.grey.shade400), textAlign: TextAlign.center),
-      ]),
-    );
 
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        _resumen(),
-        const SizedBox(height: 16),
-        _grafica(),
-      ]),
+        if (_cargando)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 32),
+            child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+          )
+        else if (_puntos.isEmpty)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 24),
+            child: Center(
+              child: Text(s.sinDatosPeriodo,
+                  style: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.4),
+                      fontSize: 13)),
+            ),
+          )
+        else ...[
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: _resumen(s),
+          ),
+          const SizedBox(height: 12),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: _grafica(),
+          ),
+        ],
+
+        const Divider(height: 32),
+      ],
     );
   }
 
-  Widget _resumen() {
+  Widget _resumen(AppStrings s) {
     final ys = _puntos.map((p) => p.y).toList();
-    final min = ys.reduce((a, b) => a < b ? a : b);
-    final max = ys.reduce((a, b) => a > b ? a : b);
+    final mn  = ys.reduce((a, b) => a < b ? a : b);
+    final mx  = ys.reduce((a, b) => a > b ? a : b);
     final avg = ys.reduce((a, b) => a + b) / ys.length;
-    final ultimo = ys.last;
-    final u = _varSel?.unidad ?? '';
-    final c = _varSel?.color ?? AppLightTheme.botonPrincipal;
-    String f(double v) => u.isEmpty ? v.toStringAsFixed(1) : '${v.toStringAsFixed(1)} $u';
+    final u = _varSel.unidad;
+    final c = _varSel.color;
+    String f(double v) =>
+        u.isEmpty ? v.toStringAsFixed(1) : '${v.toStringAsFixed(1)} $u';
 
     return Row(children: [
-      _stat('Último', f(ultimo), c),
+      _stat(s.ultimo,   f(ys.last), c),
       const SizedBox(width: 8),
-      _stat('Promedio', f(avg), Colors.grey.shade600),
+      _stat(s.promedio, f(avg), Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6)),
       const SizedBox(width: 8),
-      _stat('Mín', f(min), Colors.blue.shade400),
+      _stat(s.min,      f(mn), Colors.blue.shade400),
       const SizedBox(width: 8),
-      _stat('Máx', f(max), Colors.orange.shade600),
+      _stat(s.max,      f(mx), Colors.orange.shade600),
     ]);
   }
 
   Widget _stat(String label, String valor, Color color) => Expanded(
     child: Container(
-      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.08),
+        color: color.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: color.withOpacity(0.25)),
+        border: Border.all(color: color.withValues(alpha: 0.25)),
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text(label, style: TextStyle(fontSize: 10, color: color.withOpacity(0.8))),
-        const SizedBox(height: 4),
-        Text(valor, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: color),
+        Text(label,
+            style: TextStyle(fontSize: 10, color: color.withValues(alpha: 0.8))),
+        const SizedBox(height: 3),
+        Text(valor,
+            style: TextStyle(
+                fontSize: 12, fontWeight: FontWeight.w600, color: color),
             overflow: TextOverflow.ellipsis),
       ]),
     ),
   );
 
   Widget _grafica() {
-    final color = _varSel?.color ?? AppLightTheme.botonPrincipal;
-    final etiqueta = _varSel?.etiqueta ?? '';
-    final unidad = _varSel?.unidad ?? '';
-    final ys = _puntos.map((p) => p.y).toList();
-    final minY = ys.reduce((a, b) => a < b ? a : b);
-    final maxY = ys.reduce((a, b) => a > b ? a : b);
-    final pad = (maxY - minY).abs() < 0.01 ? 1.0 : (maxY - minY) * 0.15;
-    final paso = (_puntos.length / 7).ceil().clamp(1, _puntos.length);
+    final color  = _varSel.color;
+    final unidad = _varSel.unidad;
+    final ys     = _puntos.map((p) => p.y).toList();
+    final minY   = ys.reduce((a, b) => a < b ? a : b);
+    final maxY   = ys.reduce((a, b) => a > b ? a : b);
+    final pad    = (maxY - minY).abs() < 0.01 ? 1.0 : (maxY - minY) * 0.15;
+    final paso   = (_puntos.length / 7).ceil().clamp(1, _puntos.length);
+
+    final gridColor    = Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.12);
+    final borderColor  = Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.25);
+    final axisColor    = Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5);
 
     return Container(
       padding: const EdgeInsets.fromLTRB(8, 16, 16, 8),
       decoration: BoxDecoration(
         color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade200),
+        border: Border.all(color: gridColor),
       ),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Padding(
-          padding: const EdgeInsets.only(left: 8, bottom: 12),
-          child: Row(children: [
-            Container(width: 12, height: 3, decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(2))),
-            const SizedBox(width: 6),
-            Text('$etiqueta${unidad.isNotEmpty ? ' ($unidad)' : ''}',
-                style: TextStyle(fontSize: 12, color: color, fontWeight: FontWeight.w500)),
-            const Spacer(),
-            Text('${_puntos.length} lecturas', style: TextStyle(fontSize: 11, color: Colors.grey.shade400)),
-          ]),
-        ),
-        SizedBox(
-          height: 220,
-          child: LineChart(LineChartData(
-            minY: minY - pad,
-            maxY: maxY + pad,
-            clipData: const FlClipData.all(),
-            gridData: FlGridData(
-              show: true,
-              drawVerticalLine: false,
-              getDrawingHorizontalLine: (_) => FlLine(color: Colors.grey.shade200, strokeWidth: 1),
+      child: SizedBox(
+        height: 200,
+        child: LineChart(LineChartData(
+          minY: minY - pad,
+          maxY: maxY + pad,
+          clipData: const FlClipData.all(),
+          gridData: FlGridData(
+            show: true,
+            drawVerticalLine: false,
+            getDrawingHorizontalLine: (_) =>
+                FlLine(color: gridColor, strokeWidth: 1),
+          ),
+          borderData: FlBorderData(
+            show: true,
+            border: Border(
+              bottom: BorderSide(color: borderColor),
+              left:   BorderSide(color: borderColor),
             ),
-            borderData: FlBorderData(
-              show: true,
-              border: Border(
-                bottom: BorderSide(color: Colors.grey.shade300),
-                left: BorderSide(color: Colors.grey.shade300),
+          ),
+          titlesData: FlTitlesData(
+            rightTitles: const AxisTitles(
+                sideTitles: SideTitles(showTitles: false)),
+            topTitles: const AxisTitles(
+                sideTitles: SideTitles(showTitles: false)),
+            leftTitles: AxisTitles(sideTitles: SideTitles(
+              showTitles: true,
+              reservedSize: 44,
+              getTitlesWidget: (v, meta) {
+                if (v == meta.min || v == meta.max)
+                  return const SizedBox.shrink();
+                return Text(v.toStringAsFixed(1),
+                    style: TextStyle(fontSize: 10, color: axisColor));
+              },
+            )),
+            bottomTitles: AxisTitles(sideTitles: SideTitles(
+              showTitles: true,
+              reservedSize: 32,
+              interval: paso.toDouble(),
+              getTitlesWidget: (v, _) {
+                final idx = v.toInt();
+                if (idx % paso != 0) return const SizedBox.shrink();
+                return Padding(
+                  padding: const EdgeInsets.only(top: 4),
+                  child: Text(_etiquetaX(idx),
+                      style: TextStyle(fontSize: 9, color: axisColor),
+                      textAlign: TextAlign.center),
+                );
+              },
+            )),
+          ),
+          lineTouchData: LineTouchData(
+            touchTooltipData: LineTouchTooltipData(
+              getTooltipItems: (spots) => spots.map((sp) {
+                final ts =
+                    _etiquetaX(sp.x.toInt()).replaceAll('\n', ' ');
+                return LineTooltipItem(
+                  '${sp.y.toStringAsFixed(2)}${unidad.isNotEmpty ? ' $unidad' : ''}\n',
+                  TextStyle(
+                      color: color,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12),
+                  children: [
+                    TextSpan(
+                        text: ts,
+                        style: const TextStyle(
+                            fontSize: 10,
+                            color: Colors.white70,
+                            fontWeight: FontWeight.normal))
+                  ],
+                );
+              }).toList(),
+            ),
+          ),
+          lineBarsData: [
+            LineChartBarData(
+              spots: _puntos,
+              isCurved: true,
+              curveSmoothness: 0.3,
+              color: color,
+              barWidth: 2,
+              dotData: FlDotData(
+                show: _puntos.length <= 30,
+                getDotPainter: (_, __, ___, ____) => FlDotCirclePainter(
+                    radius: 3,
+                    color: color,
+                    strokeWidth: 1.5,
+                    strokeColor: Colors.white),
               ),
-            ),
-            titlesData: FlTitlesData(
-              rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-              topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-              leftTitles: AxisTitles(sideTitles: SideTitles(
-                showTitles: true,
-                reservedSize: 44,
-                getTitlesWidget: (v, meta) {
-                  if (v == meta.min || v == meta.max) return const SizedBox.shrink();
-                  return Text(v.toStringAsFixed(1), style: TextStyle(fontSize: 10, color: Colors.grey.shade500));
-                },
-              )),
-              bottomTitles: AxisTitles(sideTitles: SideTitles(
-                showTitles: true,
-                reservedSize: 32,
-                interval: paso.toDouble(),
-                getTitlesWidget: (v, _) {
-                  final idx = v.toInt();
-                  if (idx % paso != 0) return const SizedBox.shrink();
-                  return Padding(
-                    padding: const EdgeInsets.only(top: 4),
-                    child: Text(_etiquetaX(idx),
-                        style: TextStyle(fontSize: 9, color: Colors.grey.shade500),
-                        textAlign: TextAlign.center),
-                  );
-                },
-              )),
-            ),
-            lineTouchData: LineTouchData(
-              touchTooltipData: LineTouchTooltipData(
-                getTooltipItems: (spots) => spots.map((s) {
-                  final ts = _etiquetaX(s.x.toInt()).replaceAll('\n', ' ');
-                  return LineTooltipItem(
-                    '${s.y.toStringAsFixed(2)}${unidad.isNotEmpty ? ' $unidad' : ''}\n',
-                    TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 12),
-                    children: [TextSpan(text: ts, style: const TextStyle(fontSize: 10, color: Colors.white70, fontWeight: FontWeight.normal))],
-                  );
-                }).toList(),
-              ),
-            ),
-            lineBarsData: [
-              LineChartBarData(
-                spots: _puntos,
-                isCurved: true,
-                curveSmoothness: 0.3,
-                color: color,
-                barWidth: 2,
-                dotData: FlDotData(
-                  show: _puntos.length <= 30,
-                  getDotPainter: (_, __, ___, ____) => FlDotCirclePainter(
-                    radius: 3, color: color, strokeWidth: 1.5, strokeColor: Colors.white),
+              belowBarData: BarAreaData(
+                show: true,
+                gradient: LinearGradient(
+                  colors: [
+                    color.withValues(alpha: 0.18),
+                    color.withValues(alpha: 0.0)
+                  ],
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
                 ),
-                belowBarData: BarAreaData(
-                  show: true,
-                  gradient: LinearGradient(
-                    colors: [color.withOpacity(0.18), color.withOpacity(0.0)],
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                  ),
-                ),
               ),
-            ],
-          )),
-        ),
-      ]),
+            ),
+          ],
+        )),
+      ),
     );
   }
 }

@@ -5,7 +5,10 @@
       "PowerShell(winget *)",
       "PowerShell(Get-ChildItem *)",
       "PowerShell(Get-Item \"C:\\\\Program Files\\\\Android\" | Select-Object FullName, LastWriteTime; cmd /c \"dir /a \"\"C:\\\\Program Files\\\\Android\"\"\")",
-      "PowerShell(cmd /c \"dir /a \"\"C:\\\\Program Files\\\\Android\\\\Android Studio\"\"\"; cmd /c \"dir /a \"\"$env:USERPROFILE\\\\AppData\\\\Local\\\\Android\"\"\")"
+      "PowerShell(cmd /c \"dir /a \"\"C:\\\\Program Files\\\\Android\\\\Android Studio\"\"\"; cmd /c \"dir /a \"\"$env:USERPROFILE\\\\AppData\\\\Local\\\\Android\"\"\")",
+      "Bash(flutter analyze *)",
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\Stell\\\\AndroidProjects\\\\Soilair-main\" -Directory)",
+      "Bash(Select-Object Name)"
     ]
   }
 }

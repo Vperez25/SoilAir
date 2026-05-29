@@ -1,415 +1,264 @@
 import 'package:flutter/material.dart';
 import 'package:soilair/services/database.dart';
-import 'package:soilair/widgets/base_scaffold.dart';
-import 'package:soilair/widgets/side_menu.dart';
+import 'package:soilair/theme/app_light_theme.dart';
 
-class AdminSensorsScreen extends StatefulWidget {
-  const AdminSensorsScreen({super.key});
+class AdminSensorsBody extends StatefulWidget {
+  const AdminSensorsBody({super.key});
 
   @override
-  State<AdminSensorsScreen> createState() => _AdminSensorsScreenState();
+  State<AdminSensorsBody> createState() => _AdminSensorsBodyState();
 }
 
-class _AdminSensorsScreenState extends State<AdminSensorsScreen> {
-  final db = DatabaseHelper();
+class _AdminSensorsBodyState extends State<AdminSensorsBody> {
+  final _db = DatabaseHelper();
 
-  List<Map<String, dynamic>> sensoresPrimarios = [];
-  List<Map<String, dynamic>> sensoresSecundarios = [];
-  List<Map<String, dynamic>> sensoresSinConfig = [];
-  List<Map<String, dynamic>> cultivos = [];
+  List<Map<String, dynamic>> _cultivos = [];
+  Map<String, dynamic>? _configuracion;
+  List<Map<String, dynamic>> _sensoresPrimarios = [];
+  List<Map<String, dynamic>> _sensoresSecundarios = [];
+  bool _cargando = true;
 
   @override
   void initState() {
     super.initState();
-    cargarDatos();
+    _cargar();
   }
 
-  Future<void> cargarDatos() async {
-    sensoresPrimarios = await db.getSensoresConNombre();
-    sensoresSecundarios = await db.getSensoresSecundariosConPrimario();
-    sensoresSinConfig = await db.getSensoresSinConfig();
-    cultivos = await db.getCultivos();
-    setState(() {});
+  Future<void> _cargar() async {
+    setState(() => _cargando = true);
+    final cultivos = await _db.getCultivos();
+    final config = await _db.getConfiguracion();
+    final primarios = await _db.getTodosSensoresPrimarios();
+    final secundarios = await _db.getTodosSensoresSecundarios();
+    setState(() {
+      _cultivos = cultivos;
+      _configuracion = config;
+      _sensoresPrimarios = primarios;
+      _sensoresSecundarios = secundarios;
+      _cargando = false;
+    });
   }
 
-  Future<void> mostrarDialogoConfigPrimario({
-    required String id,
-    String? nombreActual,
-    int? cultivoActual,
-  }) async {
-    final TextEditingController nombreController =
-        TextEditingController(text: nombreActual ?? '');
-    String? cultivoSeleccionado = cultivoActual?.toString();
-    List<Map<String, dynamic>> cultivosFiltrados = List.from(cultivos);
-    final TextEditingController filtroController = TextEditingController();
-
-    await showDialog(
-      context: context,
-      builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setStateDialog) {
-            return AlertDialog(
-              title: const Text('Configurar sensor primario'),
-              content: ConstrainedBox(
-                constraints: const BoxConstraints(maxHeight: 400),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // Nombre del sensor
-                    TextField(
-                      controller: nombreController,
-                      decoration: const InputDecoration(labelText: 'Nombre'),
-                    ),
-                    const SizedBox(height: 10),
-
-                    // Filtro de cultivos
-                    TextField(
-                      controller: filtroController,
-                      decoration:
-                          const InputDecoration(labelText: 'Buscar cultivo'),
-                      onChanged: (value) {
-                        setStateDialog(() {
-                          cultivosFiltrados = cultivos
-                              .where((c) => c['nombre']
-                                  .toString()
-                                  .toLowerCase()
-                                  .contains(value.toLowerCase()))
-                              .toList();
-                        });
-                      },
-                    ),
-                    const SizedBox(height: 10),
-
-                    // Lista de cultivos filtrados
-
-                    Expanded(
-                      child: SingleChildScrollView(
-                        child: Column(
-                          children: cultivosFiltrados.map((cultivo) {
-                            return GestureDetector(
-                              onTap: () {
-                                setStateDialog(() {
-                                  cultivoSeleccionado =
-                                      cultivo['id'].toString();
-                                });
-                              },
-                              child: Row(
-                                crossAxisAlignment: CrossAxisAlignment.center,
-                                children: [
-                                  Transform.scale(
-                                    scale:
-                                        1, // Reduce el tamaño del Radio sin afectar el texto
-                                    child: Radio<String>(
-                                      value: cultivo['id'].toString(),
-                                      groupValue: cultivoSeleccionado,
-                                      onChanged: (value) {
-                                        setStateDialog(() {
-                                          cultivoSeleccionado = value;
-                                        });
-                                      },
-                                      materialTapTargetSize:
-                                          MaterialTapTargetSize.shrinkWrap,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Flexible(
-                                    child: Text(
-                                      cultivo['nombre'],
-                                      style: const TextStyle(
-                                          fontSize: 14), // letra igual
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            );
-                          }).toList(),
-                        ),
-                      ),
-                    )
-                  ],
-                ),
-              ),
-              actions: [
-                TextButton(
-                  child: const Text('Cancelar'),
-                  onPressed: () => Navigator.pop(context),
-                ),
-                ElevatedButton(
-                  child: const Text('Guardar'),
-                  onPressed: () async {
-                    await db.updateSensorConfig(
-                      id: id,
-                      nombre: nombreController.text.trim().isEmpty
-                          ? null
-                          : nombreController.text.trim(),
-                      cultivoAsignado: int.tryParse(cultivoSeleccionado ?? ''),
-                    );
-                    Navigator.pop(context);
-                    await cargarDatos();
-                  },
-                ),
-              ],
-            );
-          },
-        );
-      },
+  String get _cultivoNombre {
+    if (_configuracion == null) return 'Sin configurar';
+    final cultivoId = _configuracion!['cultivo_id'];
+    if (cultivoId == null) {
+      return _configuracion!['cultivo_nombre'] as String? ?? 'Otro';
+    }
+    final c = _cultivos.firstWhere(
+      (c) => c['id'] == cultivoId,
+      orElse: () => <String, dynamic>{},
     );
+    return c['nombre'] as String? ?? 'Sin configurar';
   }
 
-  Future<void> mostrarDialogoEnlaceSecundario(
-      {required String id, required String? actualPrimario}) async {
-    String? seleccionado = actualPrimario;
+  Future<void> _cambiarCultivo() async {
+    final cultivoActualId = _configuracion?['cultivo_id'] as int?;
+    final esOtro = _configuracion != null && cultivoActualId == null;
 
     await showDialog(
       context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('Enlazar sensor secundario'),
-          content: DropdownButtonFormField<String>(
-            value: seleccionado,
-            items: sensoresPrimarios.map((sensor) {
-              return DropdownMenuItem(
-                value: sensor['id'] as String,
-                child: Text(sensor['nombre'] ?? sensor['id']),
-              );
-            }).toList(),
-            onChanged: (value) => seleccionado = value,
-            decoration: const InputDecoration(labelText: 'Sensor primario'),
-          ),
-          actions: [
-            TextButton(
-              child: const Text('Cancelar'),
-              onPressed: () => Navigator.pop(context),
-            ),
-            ElevatedButton(
-              child: const Text('Guardar'),
+      builder: (ctx) => SimpleDialog(
+        title: const Text('Seleccionar cultivo'),
+        children: [
+          ..._cultivos.map((c) {
+            final seleccionado = c['id'] == cultivoActualId;
+            return SimpleDialogOption(
               onPressed: () async {
-                if (seleccionado != null) {
-                  await db.updateSensorSecundarioConfig(
-                    id: id,
-                    sensorPrimarioId: seleccionado!,
-                  );
-                  Navigator.pop(context);
-                  await cargarDatos();
-                }
+                await _db.setConfiguracion(cultivoId: c['id'] as int, cultivoNombre: null);
+                if (ctx.mounted) Navigator.pop(ctx);
+                await _cargar();
               },
+              child: Row(
+                children: [
+                  Icon(
+                    seleccionado ? Icons.check_circle : Icons.circle_outlined,
+                    color: seleccionado ? AppLightTheme.botonPrincipal : Colors.grey,
+                    size: 18,
+                  ),
+                  const SizedBox(width: 10),
+                  Text(c['nombre'] as String),
+                ],
+              ),
+            );
+          }),
+          const Divider(height: 1),
+          SimpleDialogOption(
+            onPressed: () async {
+              await _db.setConfiguracion(cultivoId: null, cultivoNombre: 'Otro');
+              if (ctx.mounted) Navigator.pop(ctx);
+              await _cargar();
+            },
+            child: Row(
+              children: [
+                Icon(
+                  esOtro ? Icons.check_circle : Icons.circle_outlined,
+                  color: esOtro ? AppLightTheme.botonPrincipal : Colors.grey,
+                  size: 18,
+                ),
+                const SizedBox(width: 10),
+                const Text('Otro'),
+              ],
             ),
-          ],
-        );
-      },
+          ),
+        ],
+      ),
     );
   }
 
-  Future<void> agregarSensorPrimario() async {
-    if (sensoresSinConfig.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No hay sensores sin configurar')),
-      );
-      return;
-    }
-
-    final sensor = await showDialog<Map<String, dynamic>>(
-      context: context,
-      builder: (_) {
-        return SimpleDialog(
-          title: const Text('Seleccionar sensor sin configurar'),
-          children: sensoresSinConfig.map((s) {
-            return SimpleDialogOption(
-              child: Text(s['id']),
-              onPressed: () => Navigator.pop(context, s),
-            );
-          }).toList(),
-        );
-      },
-    );
-
-    if (sensor != null) {
-      await mostrarDialogoConfigPrimario(id: sensor['id']);
-    }
+  String _formatFecha(int? timestamp) {
+    if (timestamp == null) return 'Sin lecturas';
+    final fecha = DateTime.fromMillisecondsSinceEpoch(timestamp * 1000);
+    final ahora = DateTime.now();
+    final diff = ahora.difference(fecha);
+    if (diff.inMinutes < 1) return 'hace un momento';
+    if (diff.inMinutes < 60) return 'hace ${diff.inMinutes} min';
+    if (diff.inHours < 24) return 'hace ${diff.inHours} h';
+    return '${fecha.day}/${fecha.month}/${fecha.year}';
   }
 
-  Future<void> agregarSensorSecundario() async {
-    final todosSecundarios =
-        await db.database.then((db) => db.query('sensores_secundarios'));
-    final sinEnlace =
-        todosSecundarios.where((s) => s['sensor_primario_id'] == null).toList();
-
-    if (sinEnlace.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content: Text('No hay sensores secundarios sin enlazar')),
-      );
-      return;
-    }
-
-    final sensor = await showDialog<Map<String, dynamic>>(
-      context: context,
-      builder: (_) {
-        return SimpleDialog(
-          title: const Text('Seleccionar sensor secundario'),
-          children: sinEnlace.map((s) {
-            return SimpleDialogOption(
-              child: Text(s['id'].toString()),
-              onPressed: () => Navigator.pop(context, s),
-            );
-          }).toList(),
-        );
-      },
-    );
-
-    if (sensor != null) {
-      await mostrarDialogoEnlaceSecundario(
-          id: sensor['id'], actualPrimario: null);
-    }
-  }
-
-  // Reemplaza todo el método build() por este nuevo
   @override
   Widget build(BuildContext context) {
-    final hayPrimariosSinConfig = sensoresSinConfig.isNotEmpty;
-    final haySecundariosSinEnlace =
-        sensoresSecundarios.any((s) => s['sensor_primario_id'] == null);
+    if (_cargando) return const Center(child: CircularProgressIndicator());
 
-    return BaseScaffold(
-      title: 'Administrar Sensores',
-      drawer: MySideMenuWidget(scaffoldContext: context),
-      body: SingleChildScrollView(
+    final hayDatos = _sensoresPrimarios.isNotEmpty || _sensoresSecundarios.isNotEmpty;
+
+    return RefreshIndicator(
+      onRefresh: _cargar,
+      child: ListView(
         padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const SizedBox(height: 16),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text('Sensores Primarios:',
-                    style:
-                        TextStyle(fontWeight: FontWeight.bold, fontSize: 20)),
-                if (hayPrimariosSinConfig)
-                  ElevatedButton.icon(
-                    onPressed: () => agregarSensorPrimario(),
-                    icon: const Icon(Icons.add, size: 18),
-                    label:
-                        const Text('Agregar', style: TextStyle(fontSize: 14)),
-                    style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 6),
-                      visualDensity: VisualDensity.compact,
-                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                      minimumSize: const Size(0, 32),
-                    ),
-                  ),
-              ],
+        children: [
+          // ── Tarjeta de cultivo ──────────────────────────────
+          Card(
+            elevation: 0,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+              side: const BorderSide(color: AppLightTheme.divisor),
             ),
-            ...sensoresPrimarios.map((sensor) {
-              // Buscar el nombre del cultivo asignado
-              String cultivoNombre = '';
-              if (sensor['cultivo_asignado'] != null) {
-                final cultivo = cultivos.firstWhere(
-                  (c) => c['id'] == sensor['cultivo_asignado'],
-                  orElse: () => {'nombre': 'Desconocido'},
-                );
-                cultivoNombre = cultivo['nombre'];
-              }
-
-              return ListTile(
-                title: Text(
-                  sensor['nombre'] ?? sensor['id'],
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold, // ← aquí el nombre en negrita
-                    fontSize: 16,
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Cultivo configurado',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                   ),
-                ),
-                subtitle: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('ID: ${sensor['id']}'),
-                    if (cultivoNombre.isNotEmpty)
-                      Text('Cultivo: $cultivoNombre'),
-                  ],
-                ),
-                trailing: ElevatedButton.icon(
-                  icon: const Icon(Icons.edit),
-                  label: const Text('Editar'),
-                  onPressed: () => mostrarDialogoConfigPrimario(
-                    id: sensor['id'] as String,
-                    nombreActual: sensor['nombre'],
-                    cultivoActual: sensor['cultivo_asignado'],
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      CircleAvatar(
+                        backgroundColor: AppLightTheme.botonPrincipal.withValues(alpha: 0.1),
+                        child: const Icon(Icons.eco, color: AppLightTheme.botonPrincipal),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          _cultivoNombre,
+                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                        ),
+                      ),
+                      FilledButton(
+                        onPressed: _cambiarCultivo,
+                        style: FilledButton.styleFrom(
+                          backgroundColor: AppLightTheme.botonPrincipal,
+                          visualDensity: VisualDensity.compact,
+                        ),
+                        child: const Text('Cambiar'),
+                      ),
+                    ],
                   ),
-                ),
-              );
-            }),
+                  if (_configuracion == null)
+                    const Padding(
+                      padding: EdgeInsets.only(top: 8),
+                      child: Text(
+                        'Selecciona un cultivo para ver rangos recomendados en el dashboard.',
+                        style: TextStyle(fontSize: 12, color: Colors.grey),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
 
-            if (hayPrimariosSinConfig) ...[
-              const SizedBox(height: 8),
-              const Text('Sin configurar:',
-                  style: TextStyle(fontStyle: FontStyle.italic)),
-              ...sensoresSinConfig.map((sensor) => ListTile(
-                    title: Text(sensor['id']),
-                    subtitle: const Text('Sensor sin nombre ni cultivo'),
-                    onTap: () => mostrarDialogoConfigPrimario(id: sensor['id']),
+          const SizedBox(height: 24),
+
+          // ── Sensores detectados ─────────────────────────────
+          const Text(
+            'Sensores detectados',
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+          ),
+          const SizedBox(height: 8),
+
+          if (!hayDatos)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 32),
+              child: Column(
+                children: [
+                  Icon(Icons.sensors_off, size: 52, color: Colors.grey.shade400),
+                  const SizedBox(height: 12),
+                  const Text(
+                    'No hay sensores registrados',
+                    style: TextStyle(fontWeight: FontWeight.w500),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    'Conecta el nodo y sincroniza desde la pestaña "Conectar".',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
+                  ),
+                ],
+              ),
+            )
+          else ...[
+            if (_sensoresPrimarios.isNotEmpty) ...[
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 4),
+                child: Text('Primarios', style: TextStyle(color: Colors.grey, fontSize: 13)),
+              ),
+              ..._sensoresPrimarios.map((s) => _tarjetaSensor(
+                    id: s['id'] as String,
+                    timestamp: s['ultimo_timestamp'] as int?,
+                    icono: Icons.sensors,
                   )),
             ],
-
-            const SizedBox(height: 24),
-
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text('Sensores Secundarios:',
-                    style:
-                        TextStyle(fontWeight: FontWeight.bold, fontSize: 20)),
-                if (haySecundariosSinEnlace)
-                  ElevatedButton.icon(
-                    onPressed: () => agregarSensorSecundario(),
-                    icon: const Icon(Icons.add, size: 18),
-                    label:
-                        const Text('Agregar', style: TextStyle(fontSize: 14)),
-                    style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 6),
-                      visualDensity: VisualDensity.compact,
-                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                      minimumSize: const Size(0, 32),
-                    ),
-                  ),
-              ],
-            ),
-            // Mostrar solo sensores secundarios que tengan primario asignado
-            ...sensoresSecundarios
-                .where((s) => s['sensor_primario_id'] != null)
-                .map((sensor) {
-              final nombrePrimario = sensor['primario_nombre'] ??
-                  sensor['sensor_primario_id'] ??
-                  'No asignado';
-              return ListTile(
-                title: Text('$nombrePrimario'),
-                subtitle: Text('ID: ${sensor['sec_id']}'),
-                trailing: ElevatedButton.icon(
-                  icon: const Icon(Icons.edit),
-                  label: const Text('Editar'),
-                  onPressed: () => mostrarDialogoEnlaceSecundario(
-                    id: sensor['sec_id'],
-                    actualPrimario: sensor['sensor_primario_id'],
-                  ),
-                ),
-              );
-            }),
-            if (haySecundariosSinEnlace) ...[
-              const SizedBox(height: 8),
-              const Text('Sin enlazar:',
-                  style: TextStyle(fontStyle: FontStyle.italic)),
-              ...sensoresSecundarios
-                  .where((s) => s['sensor_primario_id'] == null)
-                  .map((sensor) => ListTile(
-                        title: Text(sensor['sec_id']),
-                        subtitle: const Text('Sensor sin primario asignado'),
-                        onTap: () => mostrarDialogoEnlaceSecundario(
-                            id: sensor['sec_id'], actualPrimario: null),
-                      )),
+            if (_sensoresSecundarios.isNotEmpty) ...[
+              const Padding(
+                padding: EdgeInsets.only(top: 12, bottom: 4),
+                child: Text('Secundarios', style: TextStyle(color: Colors.grey, fontSize: 13)),
+              ),
+              ..._sensoresSecundarios.map((s) => _tarjetaSensor(
+                    id: s['id'] as String,
+                    timestamp: s['ultimo_timestamp'] as int?,
+                    icono: Icons.device_hub,
+                  )),
             ],
           ],
+        ],
+      ),
+    );
+  }
+
+  Widget _tarjetaSensor({
+    required String id,
+    required int? timestamp,
+    required IconData icono,
+  }) {
+    return Card(
+      margin: const EdgeInsets.symmetric(vertical: 4),
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(10),
+        side: const BorderSide(color: AppLightTheme.divisor),
+      ),
+      child: ListTile(
+        leading: CircleAvatar(
+          backgroundColor: AppLightTheme.botonPrincipal.withValues(alpha: 0.1),
+          child: Icon(icono, color: AppLightTheme.botonPrincipal, size: 20),
         ),
+        title: Text(id, style: const TextStyle(fontWeight: FontWeight.w500)),
+        subtitle: Text(_formatFecha(timestamp), style: const TextStyle(fontSize: 12)),
+        trailing: const Icon(Icons.check_circle, color: Colors.green, size: 18),
       ),
     );
   }

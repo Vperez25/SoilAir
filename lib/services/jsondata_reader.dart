@@ -53,7 +53,7 @@ class JsonReader {
                 'k': sensor['k']?.toDouble(),
                 'ph': sensor['ph']?.toDouble(),
                 'humedad': sensor['humedad']?.toDouble(),
-                'ec': sensor['conductividad']?.toDouble(),
+                'ec': sensor['ec']?.toDouble(),
                 'temperatura': sensor['temperatura']?.toDouble(),
                 'radiacion': sensor['radiacion']?.toDouble(),
               };
@@ -90,7 +90,7 @@ class JsonReader {
               final sensorMap = <String, dynamic>{
                 'id': sensor['id'],
                 'timestamp': jsonData['timestamp'],
-                'ec': sensor['conductividad']?.toDouble(),
+                'ec': sensor['ec']?.toDouble(),
                 'humedad': sensor['humedad']?.toDouble(),
                 'temperatura': sensor['temperatura']?.toDouble(),
                 if (sensorPrimarioIdExistente != null) 'sensor_primario_id': sensorPrimarioIdExistente,

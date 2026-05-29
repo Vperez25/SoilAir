@@ -4,15 +4,14 @@ import 'package:soilair/services/conexion_wifi.dart';
 import 'package:soilair/services/json_reader_wifi.dart';
 import 'package:soilair/services/wifi_nativo_service.dart';
 import 'package:soilair/theme/app_light_theme.dart';
-import 'package:soilair/widgets/base_scaffold.dart';
 
-class ConexionScreen extends StatefulWidget {
-  const ConexionScreen({super.key});
+class ConexionBody extends StatefulWidget {
+  const ConexionBody({super.key});
   @override
-  State<ConexionScreen> createState() => _ConexionScreenState();
+  State<ConexionBody> createState() => _ConexionBodyState();
 }
 
-class _ConexionScreenState extends State<ConexionScreen> {
+class _ConexionBodyState extends State<ConexionBody> {
   List<WiFiAccessPoint> _nodos = [];
   bool _escaneando = false;
 
@@ -151,10 +150,8 @@ class _ConexionScreenState extends State<ConexionScreen> {
   // ── Build ───────────────────────────────────────────────────
 
   @override
-  Widget build(BuildContext context) => BaseScaffold(
-    title: 'Conectar a nodo',
-    body: _ssidActivo != null ? _vistaSync() : _vistaEscaneo(),
-  );
+  Widget build(BuildContext context) =>
+      _ssidActivo != null ? _vistaSync() : _vistaEscaneo();
 
   // ── Vista escaneo ───────────────────────────────────────────
 
@@ -231,7 +228,7 @@ class _ConexionScreenState extends State<ConexionScreen> {
       child: ListTile(
         leading: CircleAvatar(
           backgroundColor: AppLightTheme.botonPrincipal.withOpacity(0.1),
-          child: const Icon(Icons.eco, color: AppLightTheme.botonPrincipal),
+          child: const Icon(Icons.sensors, color: AppLightTheme.botonPrincipal),
         ),
         title: Text(_nombreNodo(_nodos[i].ssid), style: const TextStyle(fontWeight: FontWeight.w500)),
         subtitle: Row(children: [
