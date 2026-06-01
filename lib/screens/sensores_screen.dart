@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:showcaseview/showcaseview.dart';
 import 'package:wifi_scan/wifi_scan.dart';
 import 'package:soilair/l10n/app_strings.dart';
 import 'package:soilair/main.dart';
 import 'package:soilair/services/database.dart';
 import 'package:soilair/services/conexion_wifi.dart';
 import 'package:soilair/services/json_reader_wifi.dart';
+import 'package:soilair/services/tutorial_service.dart';
 import 'package:soilair/services/wifi_nativo_service.dart';
 import 'package:soilair/theme/app_light_theme.dart';
 import 'package:soilair/widgets/base_scaffold.dart';
@@ -27,11 +29,22 @@ class _SensoresScreenState extends State<SensoresScreen> {
   bool _escaneando = false;
   String? _mensajeError;
 
+  final _keyConectados = GlobalKey();
+  final _keyDetectados = GlobalKey();
+  bool _tutorialPendiente = false;
+  bool _tutorialIniciado = false;
+
   @override
   void initState() {
     super.initState();
     _cargar();
-    _escanear();
+    _escanear(askPermissions: false);
+    _verificarTutorial();
+  }
+
+  Future<void> _verificarTutorial() async {
+    final debe = await TutorialService.debeEjecutar(TutorialService.sensores);
+    if (debe && mounted) setState(() => _tutorialPendiente = true);
   }
 
   @override
@@ -55,13 +68,17 @@ class _SensoresScreenState extends State<SensoresScreen> {
 
   // ── WiFi scan ─────────────────────────────────────────────────
 
-  Future<void> _escanear() async {
+  Future<void> _escanear({bool askPermissions = true}) async {
     setState(() { _escaneando = true; _mensajeError = null; });
 
-    final can = await WiFiScan.instance.canStartScan(askPermissions: true);
+    final can = await WiFiScan.instance.canStartScan(askPermissions: askPermissions);
     if (can != CanStartScan.yes) {
-      final s = AppStrings.of(appLanguage.value);
-      setState(() { _escaneando = false; _mensajeError = _textoPermiso(can, s); });
+      if (askPermissions) {
+        final s = AppStrings.of(appLanguage.value);
+        setState(() { _escaneando = false; _mensajeError = _textoPermiso(can, s); });
+      } else {
+        setState(() => _escaneando = false);
+      }
       return;
     }
     await WiFiScan.instance.startScan();
@@ -202,6 +219,15 @@ class _SensoresScreenState extends State<SensoresScreen> {
         cultivoId: result['cultivoId'] as int?,
       );
       await _cargar();
+      if (mounted) {
+        final s = AppStrings.of(appLanguage.value);
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(s.sensorGuardado),
+          backgroundColor: AppLightTheme.botonPrincipal,
+          duration: const Duration(seconds: 2),
+          behavior: SnackBarBehavior.floating,
+        ));
+      }
     }
   }
 
@@ -298,70 +324,103 @@ class _SensoresScreenState extends State<SensoresScreen> {
         .where((n) => !_nodosPropiedad.contains(n.ssid))
         .toList();
 
-    return BaseScaffold(
-      title: s.navSensores,
-      body: RefreshIndicator(
-        onRefresh: () async { await _cargar(); await _escanear(); },
-        child: ListView(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          children: [
-            // ══════ SECCIÓN 1: Sensores conectados ═══════════════
-            _tituloSeccion(Icons.sensors, s.sensoresConectados),
-            const SizedBox(height: 8),
+    return ShowCaseWidget(
+      onFinish: () => TutorialService.marcarVisto(TutorialService.sensores),
+      builder: (ctx) {
+        if (_tutorialPendiente && !_tutorialIniciado) {
+          _tutorialIniciado = true;
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) {
+              ShowCaseWidget.of(ctx).startShowCase([_keyConectados, _keyDetectados]);
+            }
+          });
+        }
+        return BaseScaffold(
+          title: s.navSensores,
+          body: RefreshIndicator(
+            onRefresh: () async { await _cargar(); await _escanear(); },
+            child: ListView(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              children: [
+                // ══════ SECCIÓN 1: Sensores conectados ═══════════════
+                Showcase(
+                  key: _keyConectados,
+                  title: s.tutorialConectadosTitulo,
+                  description: s.tutorialConectadosDesc,
+                  tooltipBackgroundColor: AppLightTheme.botonPrincipal,
+                  textColor: Colors.white,
+                  targetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  targetBorderRadius: BorderRadius.circular(10),
+                  child: _tituloSeccion(Icons.sensors, s.sensoresConectados),
+                ),
+                const SizedBox(height: 8),
 
-            if (_sensores.isEmpty)
-              _tarjetaVacia(
-                icono: Icons.sensors_off,
-                texto: s.sinSensoresRegistrados,
-                sub: s.sincronizaDesdeAbajo,
-              )
-            else
-              ..._sensores.map((sen) {
-                final configurado = sen['nombre'] != null;
-                return configurado
-                    ? _tarjetaConfigurado(sen, s)
-                    : _tarjetaNoConfigurado(sen, s);
-              }),
+                if (_sensores.isEmpty)
+                  _tarjetaVacia(
+                    icono: Icons.sensors_off,
+                    texto: s.sinSensoresRegistrados,
+                    sub: s.sincronizaDesdeAbajo,
+                  )
+                else
+                  ..._sensores.map((sen) {
+                    final configurado = sen['nombre'] != null;
+                    return configurado
+                        ? _tarjetaConfigurado(sen, s)
+                        : _tarjetaNoConfigurado(sen, s);
+                  }),
 
-            const SizedBox(height: 24),
+                const SizedBox(height: 24),
 
-            // ══════ SECCIÓN 2: Nodos detectados ══════════════════
-            _tituloSeccion(Icons.wifi_find, s.nodosDetectados),
-            const SizedBox(height: 8),
-            _bannerEscaneo(nodosVisibles.length, s),
+                // ══════ SECCIÓN 2: Nodos detectados ══════════════════
+                Showcase(
+                  key: _keyDetectados,
+                  title: s.tutorialDetectadosTitulo,
+                  description: s.tutorialDetectadosDesc,
+                  tooltipBackgroundColor: AppLightTheme.botonPrincipal,
+                  textColor: Colors.white,
+                  targetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  targetBorderRadius: BorderRadius.circular(10),
+                  child: _tituloSeccion(Icons.wifi_find, s.nodosDetectados),
+                ),
+                const SizedBox(height: 8),
+                _bannerEscaneo(nodosVisibles.length, s),
 
-            if (_mensajeError != null)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: Text(_mensajeError!,
-                    style: const TextStyle(color: Colors.orange, fontSize: 13)),
-              ),
+                if (_mensajeError != null)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: Text(_mensajeError!,
+                        style: const TextStyle(color: Colors.orange, fontSize: 13)),
+                  ),
 
-            if (_escaneando)
-              const Padding(
-                padding: EdgeInsets.symmetric(vertical: 24),
-                child: Center(child: CircularProgressIndicator()),
-              )
-            else if (nodosVisibles.isEmpty)
-              _tarjetaVacia(
-                icono: Icons.wifi_off,
-                texto: s.noEncontradosNodos,
-                sub: s.asegurateNodos,
-              )
-            else
-              ...nodosVisibles.map((n) => _tarjetaNodo(n, s)),
+                if (_escaneando)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 24),
+                    child: Center(child: CircularProgressIndicator()),
+                  )
+                else if (nodosVisibles.isEmpty)
+                  _tarjetaVacia(
+                    icono: Icons.wifi_off,
+                    texto: s.noEncontradosNodos,
+                    sub: s.asegurateNodos,
+                  )
+                else
+                  ...nodosVisibles.map((n) => _tarjetaNodo(n, s)),
 
-            Padding(
-              padding: const EdgeInsets.only(top: 8),
-              child: Text(
-                s.puedesConectar,
-                style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
-                textAlign: TextAlign.center,
-              ),
+                Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Text(
+                    s.puedesConectar,
+                    style: TextStyle(
+                        fontSize: 13,
+                        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.65)),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              ],
             ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 

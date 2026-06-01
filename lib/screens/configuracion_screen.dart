@@ -32,11 +32,11 @@ class ConfiguracionScreen extends StatelessWidget {
           _seccion(s.idiomaSeccion),
           ValueListenableBuilder<String>(
             valueListenable: appLanguage,
-            builder: (_, lang, __) => Column(
+            builder: (ctx, lang, __) => Column(
               children: [
-                _opcionIdioma(lang, 'es', 'Español',  '🇲🇽'),
-                _opcionIdioma(lang, 'en', 'English',  '🇺🇸'),
-                _opcionIdioma(lang, 'fr', 'Français', '🇫🇷'),
+                _opcionIdioma(ctx, lang, 'es', 'Español',  '🇲🇽'),
+                _opcionIdioma(ctx, lang, 'en', 'English',  '🇺🇸'),
+                _opcionIdioma(ctx, lang, 'fr', 'Français', '🇫🇷'),
               ],
             ),
           ),
@@ -61,7 +61,7 @@ class ConfiguracionScreen extends StatelessWidget {
   }
 
   static Widget _opcionIdioma(
-      String langActual, String code, String label, String flag) {
+      BuildContext context, String langActual, String code, String label, String flag) {
     final sel = langActual == code;
     return ListTile(
       leading: Text(flag, style: const TextStyle(fontSize: 22)),
@@ -73,7 +73,17 @@ class ConfiguracionScreen extends StatelessWidget {
               color: AppLightTheme.botonPrincipal, size: 20)
           : const Icon(Icons.circle_outlined,
               color: Colors.grey, size: 20),
-      onTap: () => appLanguage.value = code,
+      onTap: () {
+        if (sel) return;
+        appLanguage.value = code;
+        final s = AppStrings.of(code);
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(s.idiomaActualizado),
+          backgroundColor: AppLightTheme.botonPrincipal,
+          duration: const Duration(seconds: 2),
+          behavior: SnackBarBehavior.floating,
+        ));
+      },
     );
   }
 

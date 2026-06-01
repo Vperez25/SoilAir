@@ -8,7 +8,10 @@
       "PowerShell(cmd /c \"dir /a \"\"C:\\\\Program Files\\\\Android\\\\Android Studio\"\"\"; cmd /c \"dir /a \"\"$env:USERPROFILE\\\\AppData\\\\Local\\\\Android\"\"\")",
       "Bash(flutter analyze *)",
       "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\Stell\\\\AndroidProjects\\\\Soilair-main\" -Directory)",
-      "Bash(Select-Object Name)"
+      "Bash(Select-Object Name)",
+      "Bash(dart analyze *)",
+      "Bash(flutter pub *)",
+      "Bash(echo \"EXIT:$?\")"
     ]
   }
 }

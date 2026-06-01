@@ -22,16 +22,19 @@ class EvaluadorSugerencias {
     List<Sugerencia> sugerencias = [];
 
     final nombre = sensor['nombre'] ?? 'Sensor';
-    final params = ['n', 'p', 'k', 'ph', 'humedad', 'ec', 'temperatura'];
+    final params = ['n', 'p', 'k', 'ph', 'humedad', 'ec', 'temperatura', 'radiacion'];
 
     for (var param in params) {
       final valor = sensor[param] as double?;
       if (valor == null) continue;
 
-      final optMin = rangos['${param}_optimo_min'] as double?;
-      final optMax = rangos['${param}_optimo_max'] as double?;
-      final critMin = rangos['${param}_critico_min'] as double?;
-      final critMax = rangos['${param}_critico_max'] as double?;
+      // DB column prefix differs from sensor key for temperatura
+      final dbKey = param == 'temperatura' ? 'temp' : param;
+
+      final optMin = rangos['${dbKey}_optimo_min'] as double?;
+      final optMax = rangos['${dbKey}_optimo_max'] as double?;
+      final critMin = rangos['${dbKey}_critico_min'] as double?;
+      final critMax = rangos['${dbKey}_critico_max'] as double?;
 
       if (critMin != null && valor < critMin) {
         sugerencias.add(Sugerencia(
@@ -101,6 +104,10 @@ class EvaluadorSugerencias {
         return bajo
             ? 'Temperatura del suelo demasiado baja. Esto retrasa la germinación y el crecimiento. Considera proteger con acolchado o esperar condiciones más cálidas.'
             : 'Temperatura del suelo muy elevada. Podría causar estrés térmico en las raíces. Aumenta el riego o usa cobertura para reducir el calor.';
+      case 'radiacion':
+        return bajo
+            ? 'Radiación solar críticamente baja. La fotosíntesis puede verse muy afectada. Verifica si hay sombra excesiva o condiciones de nubosidad prolongada.'
+            : 'Radiación solar excesivamente alta. Puede provocar quemaduras en hojas y estrés hídrico severo. Considera instalar malla sombra.';
       default:
         return 'Valor fuera de rango crítico detectado.';
     }
@@ -136,6 +143,10 @@ class EvaluadorSugerencias {
         return bajo
             ? 'Temperatura levemente baja. Podría retrasar el desarrollo.'
             : 'Temperatura algo elevada. Puede afectar el crecimiento si persiste.';
+      case 'radiacion':
+        return bajo
+            ? 'Radiación solar por debajo del ideal. Puede reducir la tasa fotosintética.'
+            : 'Radiación solar algo elevada. Monitorea el estado hídrico del cultivo.';
       default:
         return 'Parámetro fuera del rango óptimo.';
     }

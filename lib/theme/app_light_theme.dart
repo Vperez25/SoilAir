@@ -16,8 +16,9 @@ class AppLightTheme {
   static const Color textoOscuro        = Colors.white;
 
   // ── Navegación ─────────────────────────────────────────────────
-  static const Color navSelected   = botonPrincipal;
-  static final Color navUnselected = botonPrincipal.withValues(alpha: 0.6);
+  static const Color navSelected         = botonPrincipal;
+  static const Color navUnselectedLight  = Color(0xFF757575); // grey 600
+  static const Color navUnselectedDark   = Color(0xFF9E9E9E); // grey 500
 
   // ── Tema claro ─────────────────────────────────────────────────
   static ThemeData get themeData {
@@ -39,11 +40,13 @@ class AppLightTheme {
       ),
       cardColor: fondoTarjeta,
       dividerColor: divisor,
-      bottomNavigationBarTheme: BottomNavigationBarThemeData(
+      bottomNavigationBarTheme: const BottomNavigationBarThemeData(
         backgroundColor: fondoTarjeta,
         selectedItemColor: navSelected,
-        unselectedItemColor: navUnselected,
+        unselectedItemColor: navUnselectedLight,
         type: BottomNavigationBarType.fixed,
+        selectedLabelStyle: TextStyle(fontWeight: FontWeight.w600, fontSize: 11),
+        unselectedLabelStyle: TextStyle(fontSize: 11),
       ),
       navigationBarTheme: NavigationBarThemeData(
         indicatorColor: Colors.transparent,
@@ -51,13 +54,13 @@ class AppLightTheme {
           if (states.contains(WidgetState.selected)) {
             return const TextStyle(color: navSelected, fontWeight: FontWeight.bold);
           }
-          return TextStyle(color: navUnselected);
+          return const TextStyle(color: navUnselectedLight);
         }),
         iconTheme: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.selected)) {
             return const IconThemeData(color: navSelected);
           }
-          return IconThemeData(color: navUnselected);
+          return const IconThemeData(color: navUnselectedLight);
         }),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
@@ -97,11 +100,13 @@ class AppLightTheme {
       ),
       cardColor: fondoTarjetaOscura,
       dividerColor: divisor,
-      bottomNavigationBarTheme: BottomNavigationBarThemeData(
+      bottomNavigationBarTheme: const BottomNavigationBarThemeData(
         backgroundColor: fondoTarjetaOscura,
         selectedItemColor: navSelected,
-        unselectedItemColor: navUnselected,
+        unselectedItemColor: navUnselectedDark,
         type: BottomNavigationBarType.fixed,
+        selectedLabelStyle: TextStyle(fontWeight: FontWeight.w600, fontSize: 11),
+        unselectedLabelStyle: TextStyle(fontSize: 11),
       ),
       navigationBarTheme: NavigationBarThemeData(
         indicatorColor: Colors.transparent,
@@ -109,13 +114,13 @@ class AppLightTheme {
           if (states.contains(WidgetState.selected)) {
             return const TextStyle(color: navSelected, fontWeight: FontWeight.bold);
           }
-          return TextStyle(color: navUnselected);
+          return const TextStyle(color: navUnselectedDark);
         }),
         iconTheme: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.selected)) {
             return const IconThemeData(color: navSelected);
           }
-          return IconThemeData(color: navUnselected);
+          return const IconThemeData(color: navUnselectedDark);
         }),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(

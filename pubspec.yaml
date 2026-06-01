@@ -21,6 +21,8 @@ dependencies:
   http: ^1.6.0
   connectivity_plus: ^4.0.2
   wifi_scan: ^0.4.1         # escaneo automático de redes SOILAIR_*
+  showcaseview: ^3.0.0
+  shared_preferences: ^2.2.0
 
 dev_dependencies:
   flutter_test:

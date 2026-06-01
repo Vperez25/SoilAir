@@ -417,7 +417,9 @@ class _SensorSectionState extends State<_SensorSection> {
   );
 
   Widget _grafica() {
-    final color  = _varSel.color;
+    // La línea de la gráfica usa siempre el color primario (tendencia neutral).
+    // El color de la variable solo identifica el chip selector, no el estado.
+    final color  = Theme.of(context).colorScheme.primary;
     final unidad = _varSel.unidad;
     final ys     = _puntos.map((p) => p.y).toList();
     final minY   = ys.reduce((a, b) => a < b ? a : b);

@@ -1,7 +1,13 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:showcaseview/showcaseview.dart';
 import 'package:soilair/l10n/app_strings.dart';
+import 'package:soilair/services/conexion_wifi.dart';
 import 'package:soilair/services/database.dart';
+import 'package:soilair/services/json_reader_wifi.dart';
 import 'package:soilair/services/plants_reader.dart';
+import 'package:soilair/services/tutorial_service.dart';
+import 'package:soilair/services/wifi_nativo_service.dart';
 import 'package:soilair/screens/dashboard_screen.dart';
 import 'package:soilair/screens/sensores_screen.dart';
 import 'package:soilair/screens/suggestions_screen.dart';
@@ -9,8 +15,9 @@ import 'package:soilair/screens/historial_screen.dart';
 import 'package:soilair/screens/configuracion_screen.dart';
 import 'theme/app_light_theme.dart';
 
-final ValueNotifier<ThemeMode> appThemeMode = ValueNotifier(ThemeMode.light);
-final ValueNotifier<String>    appLanguage  = ValueNotifier('es');
+final ValueNotifier<ThemeMode> appThemeMode  = ValueNotifier(ThemeMode.light);
+final ValueNotifier<String>    appLanguage   = ValueNotifier('es');
+final ValueNotifier<int>       autoSyncEpoch = ValueNotifier(0);
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -55,31 +62,171 @@ class MainNavigation extends StatefulWidget {
 class _MainNavigationState extends State<MainNavigation> {
   int _selectedIndex = 0;
 
-  static const List<Widget> _screens = [
-    DashboardScreen(),
-    HistorialScreen(),
-    SensoresScreen(),
-    SugerenciasScreen(),
-    ConfiguracionScreen(),
-  ];
+  final _keyDashboard   = GlobalKey();
+  final _keyHistorial   = GlobalKey();
+  final _keySensores    = GlobalKey();
+  final _keySugerencias = GlobalKey();
+  final _keyAjustes     = GlobalKey();
+
+  bool _tutorialPendiente = false;
+  bool _tutorialIniciado  = false;
+
+  final _wifiNativo      = WifiNativoService();
+  Timer? _autoSyncTimer;
+  bool _sincronizandoAuto = false;
+
+  @override
+  void initState() {
+    super.initState();
+    appLanguage.addListener(_rebuild);
+    _verificarTutorial();
+    _autoSyncTimer = Timer.periodic(
+      const Duration(seconds: 60),
+      (_) => _autoSync(),
+    );
+  }
+
+  void _rebuild() { if (mounted) setState(() {}); }
+
+  Future<void> _autoSync() async {
+    if (_sincronizandoAuto) return;
+    final enRed = await _wifiNativo.estaEnRedSoilair();
+    if (!enRed) return;
+    _sincronizandoAuto = true;
+    try {
+      final ssid = await _wifiNativo.redActual();
+      final resultado = await ConexionWiFi().descargarTodosYEliminar(
+        (jsonStr) => JsonReaderWiFi(ssid: ssid).importJsonFromString(jsonStr),
+      );
+      if (resultado.exito) autoSyncEpoch.value++;
+    } catch (_) {
+      // silent — background sync failures are non-fatal
+    } finally {
+      _sincronizandoAuto = false;
+    }
+  }
+
+  @override
+  void dispose() {
+    _autoSyncTimer?.cancel();
+    appLanguage.removeListener(_rebuild);
+    super.dispose();
+  }
+
+  Future<void> _verificarTutorial() async {
+    final debe = await TutorialService.debeEjecutar(TutorialService.nav);
+    if (debe && mounted) setState(() => _tutorialPendiente = true);
+  }
 
   @override
   Widget build(BuildContext context) {
     final s = AppStrings.of(appLanguage.value);
-    return Scaffold(
-      body: _screens[_selectedIndex],
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _selectedIndex,
-        type: BottomNavigationBarType.fixed,
-        onTap: (i) => setState(() => _selectedIndex = i),
-        items: [
-          BottomNavigationBarItem(icon: const Icon(Icons.dashboard),  label: s.navDashboard),
-          BottomNavigationBarItem(icon: const Icon(Icons.show_chart), label: s.navHistorial),
-          BottomNavigationBarItem(icon: const Icon(Icons.sensors),    label: s.navSensores),
-          BottomNavigationBarItem(icon: const Icon(Icons.lightbulb),  label: s.navSugerencias),
-          BottomNavigationBarItem(icon: const Icon(Icons.settings),   label: s.navAjustes),
-        ],
-      ),
+
+    return ShowCaseWidget(
+      onFinish: () {
+        TutorialService.marcarVisto(TutorialService.nav);
+        if (mounted) setState(() => _selectedIndex = 2);
+      },
+      builder: (ctx) {
+        if (_tutorialPendiente && !_tutorialIniciado) {
+          _tutorialIniciado = true;
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) {
+              ShowCaseWidget.of(ctx).startShowCase([
+                _keyDashboard,
+                _keyHistorial,
+                _keySensores,
+                _keySugerencias,
+                _keyAjustes,
+              ]);
+            }
+          });
+        }
+
+        final screens = [
+          DashboardScreen(),
+          HistorialScreen(),
+          SensoresScreen(),
+          SugerenciasScreen(),
+          ConfiguracionScreen(),
+        ];
+
+        return Scaffold(
+          body: screens[_selectedIndex],
+          bottomNavigationBar: BottomNavigationBar(
+            currentIndex: _selectedIndex,
+            type: BottomNavigationBarType.fixed,
+            onTap: (i) => setState(() => _selectedIndex = i),
+            items: [
+              BottomNavigationBarItem(
+                icon: Showcase(
+                  key: _keyDashboard,
+                  title: s.tutorialNavDashboardTitulo,
+                  description: s.tutorialNavDashboardDesc,
+                  tooltipBackgroundColor: AppLightTheme.botonPrincipal,
+                  textColor: Colors.white,
+                  targetPadding: const EdgeInsets.all(24),
+                  targetBorderRadius: BorderRadius.circular(12),
+                  child: const Icon(Icons.dashboard),
+                ),
+                label: s.navDashboard,
+              ),
+              BottomNavigationBarItem(
+                icon: Showcase(
+                  key: _keyHistorial,
+                  title: s.tutorialNavHistorialTitulo,
+                  description: s.tutorialNavHistorialDesc,
+                  tooltipBackgroundColor: AppLightTheme.botonPrincipal,
+                  textColor: Colors.white,
+                  targetPadding: const EdgeInsets.all(24),
+                  targetBorderRadius: BorderRadius.circular(12),
+                  child: const Icon(Icons.show_chart),
+                ),
+                label: s.navHistorial,
+              ),
+              BottomNavigationBarItem(
+                icon: Showcase(
+                  key: _keySensores,
+                  title: s.tutorialNavSensoresTitulo,
+                  description: s.tutorialNavSensoresDesc,
+                  tooltipBackgroundColor: AppLightTheme.botonPrincipal,
+                  textColor: Colors.white,
+                  targetPadding: const EdgeInsets.all(24),
+                  targetBorderRadius: BorderRadius.circular(12),
+                  child: const Icon(Icons.sensors),
+                ),
+                label: s.navSensores,
+              ),
+              BottomNavigationBarItem(
+                icon: Showcase(
+                  key: _keySugerencias,
+                  title: s.tutorialNavSugerenciasTitulo,
+                  description: s.tutorialNavSugerenciasDesc,
+                  tooltipBackgroundColor: AppLightTheme.botonPrincipal,
+                  textColor: Colors.white,
+                  targetPadding: const EdgeInsets.all(24),
+                  targetBorderRadius: BorderRadius.circular(12),
+                  child: const Icon(Icons.lightbulb),
+                ),
+                label: s.navSugerencias,
+              ),
+              BottomNavigationBarItem(
+                icon: Showcase(
+                  key: _keyAjustes,
+                  title: s.tutorialNavAjustesTitulo,
+                  description: s.tutorialNavAjustesDesc,
+                  tooltipBackgroundColor: AppLightTheme.botonPrincipal,
+                  textColor: Colors.white,
+                  targetPadding: const EdgeInsets.all(24),
+                  targetBorderRadius: BorderRadius.circular(12),
+                  child: const Icon(Icons.settings),
+                ),
+                label: s.navAjustes,
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }

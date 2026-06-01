@@ -114,9 +114,12 @@ class AppStrings {
   String get pasoGuardando     => _t('pasoGuardando');
 
   // ── Sugerencias ────────────────────────────────────────────────
-  String get sugerenciasInfo    => _t('sugerenciasInfo');
-  String get sinSugerencias     => _t('sinSugerencias');
-  String get sinSugerenciasSub  => _t('sinSugerenciasSub');
+  String get sugerenciasInfo               => _t('sugerenciasInfo');
+  String get sinSugerencias                => _t('sinSugerencias');
+  String get sinSugerenciasSub             => _t('sinSugerenciasSub');
+  String get sinSugerenciasSinSensores     => _t('sinSugerenciasSinSensores');
+  String get sinSugerenciasSinSensoresSub  => _t('sinSugerenciasSinSensoresSub');
+  String get ultimaLectura                 => _t('ultimaLectura');
 
   // ── Dashboard onboarding ───────────────────────────────────────
   String get bienvenidoTitulo   => _t('bienvenidoTitulo');
@@ -130,6 +133,26 @@ class AppStrings {
   String get informacion           => _t('informacion');
   String get version               => _t('version');
   String get dispositivosSoportados=> _t('dispositivosSoportados');
+  String get idiomaActualizado     => _t('idiomaActualizado');
+  String get sensorGuardado        => _t('sensorGuardado');
+
+  // ── Tutorial: navegación ───────────────────────────────────────
+  String get tutorialNavDashboardTitulo  => _t('tutorialNavDashboardTitulo');
+  String get tutorialNavDashboardDesc    => _t('tutorialNavDashboardDesc');
+  String get tutorialNavHistorialTitulo  => _t('tutorialNavHistorialTitulo');
+  String get tutorialNavHistorialDesc    => _t('tutorialNavHistorialDesc');
+  String get tutorialNavSensoresTitulo   => _t('tutorialNavSensoresTitulo');
+  String get tutorialNavSensoresDesc     => _t('tutorialNavSensoresDesc');
+  String get tutorialNavSugerenciasTitulo=> _t('tutorialNavSugerenciasTitulo');
+  String get tutorialNavSugerenciasDesc  => _t('tutorialNavSugerenciasDesc');
+  String get tutorialNavAjustesTitulo    => _t('tutorialNavAjustesTitulo');
+  String get tutorialNavAjustesDesc      => _t('tutorialNavAjustesDesc');
+
+  // ── Tutorial: pantalla Sensores ────────────────────────────────
+  String get tutorialConectadosTitulo => _t('tutorialConectadosTitulo');
+  String get tutorialConectadosDesc   => _t('tutorialConectadosDesc');
+  String get tutorialDetectadosTitulo => _t('tutorialDetectadosTitulo');
+  String get tutorialDetectadosDesc   => _t('tutorialDetectadosDesc');
 
   // ── Sensores: permisos WiFi ────────────────────────────────────
   String get permisoUbicacion    => _t('permisoUbicacion');
@@ -258,6 +281,20 @@ class AppStrings {
       'pasoGuardando':       'Guardando en base de datos…',
       'unArchivoImportado':  '✓ 1 archivo importado',
       'nArchivosImportados': '✓ {n} archivos importados',
+      'tutorialNavDashboardTitulo':   'Dashboard',
+      'tutorialNavDashboardDesc':    'Vista general de tus cultivos. Aquí verás las últimas lecturas de cada sensor, la temperatura del aire y la humedad ambiental.',
+      'tutorialNavHistorialTitulo':  'Historial',
+      'tutorialNavHistorialDesc':    'Consulta gráficas con el historial de mediciones. Analiza tendencias de pH, humedad, temperatura y más por período de tiempo.',
+      'tutorialNavSensoresTitulo':   'Sensores',
+      'tutorialNavSensoresDesc':     'Conecta y gestiona tus sensores ESP32 SoilAir. Desde aquí sincronizas las lecturas de los nodos cercanos.',
+      'tutorialNavSugerenciasTitulo':'Sugerencias',
+      'tutorialNavSugerenciasDesc':  'Recomendaciones automáticas para tus cultivos basadas en las lecturas de los sensores y los rangos óptimos configurados.',
+      'tutorialNavAjustesTitulo':    'Ajustes',
+      'tutorialNavAjustesDesc':      'Cambia el tema de la app (claro u oscuro), el idioma y revisa información sobre la versión.',
+      'tutorialConectadosTitulo': 'Tus sensores',
+      'tutorialConectadosDesc':   'Aquí aparecen los sensores ESP32 ya vinculados. Toca el ícono de editar para configurarlos o mantén pulsado para desincronizarlos.',
+      'tutorialDetectadosTitulo': 'Nodos cercanos',
+      'tutorialDetectadosDesc':   'Los nodos SoilAir en tu red WiFi aparecen aquí automáticamente. Toca "Sincronizar" para descargar las mediciones del sensor a la app.',
       'permisoUbicacion':    'Activa el permiso de ubicación en Ajustes → Aplicaciones → SoilAir → Permisos',
       'ubicacionDesactivada':'Activa la ubicación del dispositivo para detectar redes WiFi.',
       'noSePuedeEscanear':   'No se puede escanear en este momento.',
@@ -269,9 +306,12 @@ class AppStrings {
       'desincronizarContenidoTpl':  'El sensor "{nombre}" dejará de mostrarse en Sensores conectados.\n\nSus datos históricos se conservarán.',
       'resetFisicoSnackbarTpl':     'El nodo {nombre} fue reseteado físicamente. Propiedad liberada.',
       // Sugerencias
-      'sugerenciasInfo':    'Recomendaciones basadas en las últimas lecturas y los rangos óptimos del cultivo asignado.',
-      'sinSugerencias':     'Todo en orden',
-      'sinSugerenciasSub':  'Los sensores están dentro de los rangos óptimos del cultivo asignado.',
+      'sugerenciasInfo':               'Recomendaciones basadas en las últimas lecturas y los rangos óptimos del cultivo asignado.',
+      'sinSugerencias':                'Todo en orden',
+      'sinSugerenciasSub':             'Los sensores están dentro de los rangos óptimos del cultivo asignado.',
+      'sinSugerenciasSinSensores':     'Sin sensores disponibles',
+      'sinSugerenciasSinSensoresSub':  'Conecta y sincroniza un sensor desde la pestaña Sensores para recibir recomendaciones.',
+      'ultimaLectura':                 'Última lectura',
       // Dashboard onboarding
       'bienvenidoTitulo':   'Bienvenido a SoilAir',
       'bienvenidoDesc':     'Monitorea en tiempo real el suelo de tus cultivos. Conecta tu primer sensor desde la pestaña Sensores.',
@@ -283,6 +323,8 @@ class AppStrings {
       'informacion':            'Información',
       'version':                'Versión',
       'dispositivosSoportados': 'Dispositivos soportados',
+      'idiomaActualizado':      'Idioma actualizado',
+      'sensorGuardado':         'Sensor configurado',
     },
     // ════════════════════════════════════════════════════════════
     'en': {
@@ -369,6 +411,20 @@ class AppStrings {
       'pasoGuardando':       'Saving to database…',
       'unArchivoImportado':  '✓ 1 file imported',
       'nArchivosImportados': '✓ {n} files imported',
+      'tutorialNavDashboardTitulo':   'Dashboard',
+      'tutorialNavDashboardDesc':    'Overview of your crops. See the latest readings for each sensor, air temperature and ambient humidity.',
+      'tutorialNavHistorialTitulo':  'History',
+      'tutorialNavHistorialDesc':    'Charts with measurement history. Analyze pH, humidity, temperature trends and more over time.',
+      'tutorialNavSensoresTitulo':   'Sensors',
+      'tutorialNavSensoresDesc':     'Connect and manage your ESP32 SoilAir sensors. Sync readings from nearby nodes here.',
+      'tutorialNavSugerenciasTitulo':'Suggestions',
+      'tutorialNavSugerenciasDesc':  'Automatic recommendations for your crops based on sensor readings and configured optimal ranges.',
+      'tutorialNavAjustesTitulo':    'Settings',
+      'tutorialNavAjustesDesc':      'Change the app theme (light or dark), language, and view version information.',
+      'tutorialConectadosTitulo': 'Your sensors',
+      'tutorialConectadosDesc':   'Connected ESP32 sensors appear here. Tap the edit icon to configure them or long-press to remove them.',
+      'tutorialDetectadosTitulo': 'Nearby nodes',
+      'tutorialDetectadosDesc':   'SoilAir nodes on your WiFi network appear here automatically. Tap "Sync" to download sensor readings into the app.',
       'permisoUbicacion':    'Enable location permission in Settings → Apps → SoilAir → Permissions',
       'ubicacionDesactivada':'Enable device location to detect WiFi networks.',
       'noSePuedeEscanear':   'Cannot scan at this moment.',
@@ -380,9 +436,12 @@ class AppStrings {
       'desincronizarContenidoTpl': 'Sensor "{nombre}" will no longer appear in Connected sensors.\n\nHistorical data will be preserved.',
       'resetFisicoSnackbarTpl':    'Node {nombre} was physically reset. Ownership released.',
       // Suggestions
-      'sugerenciasInfo':    'Recommendations based on the latest readings and the optimal ranges of the assigned crop.',
-      'sinSugerencias':     'All clear',
-      'sinSugerenciasSub':  'Your sensors are within the optimal ranges for the assigned crop.',
+      'sugerenciasInfo':               'Recommendations based on the latest readings and the optimal ranges of the assigned crop.',
+      'sinSugerencias':                'All clear',
+      'sinSugerenciasSub':             'Your sensors are within the optimal ranges for the assigned crop.',
+      'sinSugerenciasSinSensores':     'No sensors available',
+      'sinSugerenciasSinSensoresSub':  'Connect and sync a sensor from the Sensors tab to receive recommendations.',
+      'ultimaLectura':                 'Last reading',
       // Dashboard onboarding
       'bienvenidoTitulo':   'Welcome to SoilAir',
       'bienvenidoDesc':     'Monitor your crops soil conditions in real time. Connect your first sensor from the Sensors tab.',
@@ -393,6 +452,8 @@ class AppStrings {
       'informacion':            'Information',
       'version':                'Version',
       'dispositivosSoportados': 'Supported devices',
+      'idiomaActualizado':      'Language updated',
+      'sensorGuardado':         'Sensor configured',
     },
     // ════════════════════════════════════════════════════════════
     'fr': {
@@ -479,6 +540,20 @@ class AppStrings {
       'pasoGuardando':       'Enregistrement en base de données…',
       'unArchivoImportado':  '✓ 1 fichier importé',
       'nArchivosImportados': '✓ {n} fichiers importés',
+      'tutorialNavDashboardTitulo':   'Tableau de bord',
+      'tutorialNavDashboardDesc':    'Vue d\'ensemble de vos cultures. Consultez les dernières lectures de chaque capteur, la température de l\'air et l\'humidité ambiante.',
+      'tutorialNavHistorialTitulo':  'Historique',
+      'tutorialNavHistorialDesc':    'Graphiques avec l\'historique des mesures. Analysez les tendances de pH, humidité, température et plus sur une période.',
+      'tutorialNavSensoresTitulo':   'Capteurs',
+      'tutorialNavSensoresDesc':     'Connectez et gérez vos capteurs ESP32 SoilAir. Synchronisez les lectures depuis les nœuds proches ici.',
+      'tutorialNavSugerenciasTitulo':'Suggestions',
+      'tutorialNavSugerenciasDesc':  'Recommandations automatiques pour vos cultures basées sur les lectures des capteurs et les plages optimales configurées.',
+      'tutorialNavAjustesTitulo':    'Paramètres',
+      'tutorialNavAjustesDesc':      'Changez le thème (clair ou sombre), la langue de l\'app et consultez les informations de version.',
+      'tutorialConectadosTitulo': 'Vos capteurs',
+      'tutorialConectadosDesc':   'Les capteurs ESP32 liés apparaissent ici. Appuyez sur l\'icône de modification pour les configurer ou appuyez longuement pour les délier.',
+      'tutorialDetectadosTitulo': 'Nœuds proches',
+      'tutorialDetectadosDesc':   'Les nœuds SoilAir de votre réseau WiFi sont détectés automatiquement. Appuyez sur « Synchroniser » pour télécharger les mesures dans l\'app.',
       'permisoUbicacion':    'Activez la permission de localisation dans Paramètres → Applications → SoilAir → Autorisations',
       'ubicacionDesactivada':'Activez la localisation de l\'appareil pour détecter les réseaux WiFi.',
       'noSePuedeEscanear':   'Impossible de scanner pour le moment.',
@@ -490,9 +565,12 @@ class AppStrings {
       'desincronizarContenidoTpl': 'Le capteur « {nombre} » ne s\'affichera plus dans Capteurs connectés.\n\nLes données historiques seront conservées.',
       'resetFisicoSnackbarTpl':    'Le nœud {nombre} a été réinitialisé physiquement. Propriété libérée.',
       // Suggestions
-      'sugerenciasInfo':    "Recommandations basées sur les dernières lectures et les plages optimales de la culture assignée.",
-      'sinSugerencias':     'Tout va bien',
-      'sinSugerenciasSub':  "Vos capteurs sont dans les plages optimales de la culture assignée.",
+      'sugerenciasInfo':               "Recommandations basées sur les dernières lectures et les plages optimales de la culture assignée.",
+      'sinSugerencias':                'Tout va bien',
+      'sinSugerenciasSub':             "Vos capteurs sont dans les plages optimales de la culture assignée.",
+      'sinSugerenciasSinSensores':     'Aucun capteur disponible',
+      'sinSugerenciasSinSensoresSub':  "Connectez et synchronisez un capteur depuis l'onglet Capteurs pour recevoir des recommandations.",
+      'ultimaLectura':                 'Dernière lecture',
       // Dashboard onboarding
       'bienvenidoTitulo':   'Bienvenue sur SoilAir',
       'bienvenidoDesc':     "Surveillez en temps réel les conditions du sol de vos cultures. Connectez votre premier capteur depuis l'onglet Capteurs.",
@@ -503,6 +581,8 @@ class AppStrings {
       'informacion':            'Informations',
       'version':                'Version',
       'dispositivosSoportados': 'Appareils pris en charge',
+      'idiomaActualizado':      'Langue mise à jour',
+      'sensorGuardado':         'Capteur configuré',
     },
   };
 }

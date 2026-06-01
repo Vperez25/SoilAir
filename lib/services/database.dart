@@ -128,23 +128,6 @@ class DatabaseHelper {
         )
       ''');
     }
-    if (oldVersion < 6) {
-      await db.execute('''
-        CREATE TABLE IF NOT EXISTS configuracion (
-          id          INTEGER PRIMARY KEY,
-          cultivo_id  INTEGER,
-          cultivo_nombre TEXT
-        )
-      ''');
-    }
-    if (oldVersion < 7) {
-      await db.execute('ALTER TABLE admin_sensores ADD COLUMN oculto INTEGER DEFAULT 0');
-      await db.execute('ALTER TABLE configuracion ADD COLUMN device_token TEXT');
-      await db.execute('CREATE TABLE IF NOT EXISTS nodos_propietario (ssid TEXT PRIMARY KEY)');
-    }
-    if (oldVersion < 8) {
-      await db.execute('ALTER TABLE admin_sensores ADD COLUMN ssid TEXT');
-    }
     if (oldVersion < 5) {
       // sensores_primarios: de PRIMARY KEY en 'id' a rowid autoincrement
       await db.execute('ALTER TABLE sensores_primarios RENAME TO _sp_old');
@@ -163,6 +146,23 @@ class DatabaseHelper {
         SELECT id, timestamp, sensor_primario_id, ec, humedad, temperatura FROM _ss_old
       ''');
       await db.execute('DROP TABLE _ss_old');
+    }
+    if (oldVersion < 6) {
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS configuracion (
+          id          INTEGER PRIMARY KEY,
+          cultivo_id  INTEGER,
+          cultivo_nombre TEXT
+        )
+      ''');
+    }
+    if (oldVersion < 7) {
+      await db.execute('ALTER TABLE admin_sensores ADD COLUMN oculto INTEGER DEFAULT 0');
+      await db.execute('ALTER TABLE configuracion ADD COLUMN device_token TEXT');
+      await db.execute('CREATE TABLE IF NOT EXISTS nodos_propietario (ssid TEXT PRIMARY KEY)');
+    }
+    if (oldVersion < 8) {
+      await db.execute('ALTER TABLE admin_sensores ADD COLUMN ssid TEXT');
     }
   }
 

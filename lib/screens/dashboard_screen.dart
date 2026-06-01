@@ -19,22 +19,26 @@ class _DashboardScreenState extends State<DashboardScreen>
 
   Map<String, String> ambiente = {};
   List<Map<String, dynamic>> sensoresPrimarios = [];
-  List<Map<String, dynamic>> sensoresSecundarios = [];
-  Map<String, List<Map<String, dynamic>>> secundariosPorPrimario = {};
   bool loading = true;
-  List<Map<String, dynamic>> _cultivos = [];
-  Map<String, dynamic>? _configuracion;
   Map<String, String?> _nombresSensores = {};
 
   @override
   void initState() {
     super.initState();
     cargarDatos();
+    autoSyncEpoch.addListener(_onAutoSync);
+  }
+
+  void _onAutoSync() { if (mounted) cargarDatos(); }
+
+  @override
+  void dispose() {
+    autoSyncEpoch.removeListener(_onAutoSync);
+    super.dispose();
   }
 
   Future<void> cargarDatos() async {
     setState(() => loading = true);
-    secundariosPorPrimario = {};
     final dbInstance = await db.database;
     final s = AppStrings.of(appLanguage.value);
 
@@ -51,16 +55,7 @@ class _DashboardScreenState extends State<DashboardScreen>
     // --------- Nombres configurados de sensores ---------
     _nombresSensores = await db.getNombresSensores();
 
-    // --------- Cultivos y configuración ---------
-    _cultivos = await db.getCultivos();
-    final config = await db.getConfiguracion();
-    _configuracion = config;
-    Map<String, dynamic>? cultivoGlobal;
-    if (config != null && config['cultivo_id'] != null) {
-      cultivoGlobal = await db.getCultivoById(config['cultivo_id'] as int);
-    }
-
-    // --------- Sensores primarios (auto-detectados) ---------
+    // --------- Sensores primarios — cultivo por sensor ---------
     final ids = await db.getTodosSensoresPrimarios();
     final primarios = <Map<String, dynamic>>[];
 
@@ -71,132 +66,35 @@ class _DashboardScreenState extends State<DashboardScreen>
           [id]);
 
       if (medicion.isNotEmpty) {
+        final cultivoSensor = await db.getRangosCultivoAsignado(id);
         primarios.add({
           'id': id,
           'nombre': _nombresSensores[id] ?? _nombreSensor(id, s),
           'datos': medicion.first,
-          'cultivo': cultivoGlobal,
+          'cultivo': cultivoSensor,
         });
       }
     }
     sensoresPrimarios = primarios;
 
-    // --------- Sensores secundarios (auto-detectados) ---------
-    final secIds = await db.getTodosSensoresSecundarios();
-    final secundarios = <Map<String, dynamic>>[];
-
-    for (var row in secIds) {
-      final secId = row['id'] as String;
-      final primarioId =
-          row['sensor_primario_id'] as String? ?? _deducirPrimario(secId);
-
-      final medicion = await dbInstance.rawQuery(
-          'SELECT * FROM sensores_secundarios WHERE id = ? ORDER BY timestamp DESC LIMIT 1',
-          [secId]);
-
-      if (medicion.isNotEmpty) {
-        final secData = {
-          'nombre': secId,
-          'datos': medicion.first,
-          'cultivo': cultivoGlobal,
-          'primario_id': primarioId,
-        };
-        secundarios.add(secData);
-        if (primarioId != null) {
-          secundariosPorPrimario
-              .putIfAbsent(primarioId, () => [])
-              .add(secData);
-        }
-      }
-    }
-    sensoresSecundarios = secundarios;
-
     setState(() => loading = false);
   }
 
-  String _cultivoNombre(AppStrings s) {
-    if (_configuracion == null) return s.sinCultivo;
-    final cultivoId = _configuracion!['cultivo_id'];
-    final cultivoNombre = _configuracion!['cultivo_nombre'] as String?;
-    if (cultivoId == null && cultivoNombre == null) return s.sinCultivo;
-    if (cultivoId == null) return cultivoNombre!;
-    final c = _cultivos.firstWhere(
-        (c) => c['id'] == cultivoId, orElse: () => <String, dynamic>{});
-    return c['nombre'] as String? ?? s.sinCultivo;
+  String _formatTiempo(int? ts, AppStrings s) {
+    if (ts == null) return s.sinLecturas;
+    final fecha = DateTime.fromMillisecondsSinceEpoch(ts * 1000);
+    final diff = DateTime.now().difference(fecha);
+    if (diff.inMinutes < 1) return s.haceUnMomento;
+    if (diff.inMinutes < 60) return s.haceMins(diff.inMinutes);
+    if (diff.inHours < 24) return s.haceHoras(diff.inHours);
+    return '${fecha.day}/${fecha.month}/${fecha.year}';
   }
 
-  Future<void> _cambiarCultivo(AppStrings s) async {
-    final cultivoActualId = _configuracion?['cultivo_id'] as int?;
-    final sinCultivo = _configuracion == null ||
-        (_configuracion!['cultivo_id'] == null &&
-            _configuracion!['cultivo_nombre'] == null);
-    final esOtro = _configuracion != null &&
-        cultivoActualId == null &&
-        _configuracion!['cultivo_nombre'] == 'Otro';
-
-    await showDialog(
-      context: context,
-      builder: (ctx) => SimpleDialog(
-        title: Text(s.seleccionarCultivo),
-        children: [
-          SimpleDialogOption(
-            onPressed: () async {
-              final db2 = await db.database;
-              await db2.delete('configuracion', where: 'id = ?', whereArgs: [1]);
-              if (ctx.mounted) Navigator.pop(ctx);
-              cargarDatos();
-            },
-            child: Row(children: [
-              Icon(sinCultivo ? Icons.check_circle : Icons.circle_outlined,
-                  color: sinCultivo
-                      ? Theme.of(context).primaryColor
-                      : Colors.grey,
-                  size: 18),
-              const SizedBox(width: 10),
-              Text(s.sinCultivo),
-            ]),
-          ),
-          const Divider(height: 1),
-          ..._cultivos.map((c) {
-            final sel = c['id'] == cultivoActualId;
-            return SimpleDialogOption(
-              onPressed: () async {
-                await db.setConfiguracion(
-                    cultivoId: c['id'] as int, cultivoNombre: null);
-                if (ctx.mounted) Navigator.pop(ctx);
-                cargarDatos();
-              },
-              child: Row(children: [
-                Icon(sel ? Icons.check_circle : Icons.circle_outlined,
-                    color: sel
-                        ? Theme.of(context).primaryColor
-                        : Colors.grey,
-                    size: 18),
-                const SizedBox(width: 10),
-                Text(c['nombre'] as String),
-              ]),
-            );
-          }),
-          const Divider(height: 1),
-          SimpleDialogOption(
-            onPressed: () async {
-              await db.setConfiguracion(cultivoId: null, cultivoNombre: 'Otro');
-              if (ctx.mounted) Navigator.pop(ctx);
-              cargarDatos();
-            },
-            child: Row(children: [
-              Icon(esOtro ? Icons.check_circle : Icons.circle_outlined,
-                  color: esOtro
-                      ? Theme.of(context).primaryColor
-                      : Colors.grey,
-                  size: 18),
-              const SizedBox(width: 10),
-              Text(s.otro),
-            ]),
-          ),
-        ],
-      ),
-    );
+  bool _esDesconectado(Map<String, dynamic> datos) {
+    final ts = datos['timestamp'] as int?;
+    if (ts == null) return true;
+    return DateTime.now().difference(
+      DateTime.fromMillisecondsSinceEpoch(ts * 1000)).inHours >= 24;
   }
 
   String _nombreSensor(String id, AppStrings s) {
@@ -207,17 +105,11 @@ class _DashboardScreenState extends State<DashboardScreen>
     return id;
   }
 
-  String? _deducirPrimario(String secId) {
-    if (!secId.startsWith('s')) return null;
-    final n = int.tryParse(secId.substring(1));
-    if (n == null) return null;
-    return 'p${((n - 1) ~/ 2) + 1}';
-  }
-
   List<Widget> buildSensorCards(
-      Map<String, dynamic> sensorData, List<String> keys, AppStrings s) {
+      Map<String, dynamic> sensorData, List<String> keys, AppStrings s,
+      {bool desconectado = false}) {
     final datos = sensorData['datos'] as Map<String, dynamic>;
-    final cultivo = sensorData['cultivo'] as Map<String, dynamic>?;
+    final cultivo = desconectado ? null : sensorData['cultivo'] as Map<String, dynamic>?;
 
     return keys.map((key) {
       final title = _getLabel(key, s);
@@ -326,137 +218,74 @@ class _DashboardScreenState extends State<DashboardScreen>
       );
     }
 
-    return DefaultTabController(
-      length: 1,
-      child: BaseScaffold(
-        title: s.navDashboard,
-        body: Column(
-          children: [
-            TabBar(
-              tabs: [Tab(text: s.ultimaMedicion)],
-              labelColor: Theme.of(context).primaryColor,
-              unselectedLabelColor: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45),
-              indicatorColor: Theme.of(context).primaryColor,
-            ),
-            Expanded(
-              child: TabBarView(
-                children: [
-                  ListView(
-                    padding: const EdgeInsets.all(16),
-                    children: [
-                      // ── Tarjeta de cultivo ──────────
-                      Card(
-                        elevation: 0,
-                        margin: const EdgeInsets.only(bottom: 16),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                          side: BorderSide(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.3)),
-                        ),
-                        child: ListTile(
-                          leading: const Icon(Icons.eco,
-                              color: AppLightTheme.botonPrincipal),
-                          title: Text(_cultivoNombre(s),
-                              style: const TextStyle(
-                                  fontWeight: FontWeight.w500)),
-                          subtitle: Text(s.cultivoMonitoreado,
-                              style: const TextStyle(fontSize: 12)),
-                          trailing: TextButton(
-                            onPressed: () => _cambiarCultivo(s),
-                            child: Text(s.cambiar),
-                          ),
-                        ),
-                      ),
-                      if (ambiente.isNotEmpty) ...[
-                        Text(s.condicionesAmbientales,
-                            style: Theme.of(context).textTheme.titleMedium),
-                        const SizedBox(height: 10),
-                        Container(
-                          padding:
-                              const EdgeInsets.symmetric(horizontal: 8),
-                          child: Wrap(
-                            spacing: 10,
-                            runSpacing: 10,
-                            children: ambiente.entries.map((e) {
-                              final parts = e.value.split(' ');
-                              return SensorCard(
-                                title: e.key,
-                                value: parts[0],
-                                unit:
-                                    parts.length > 1 ? parts[1] : '',
-                                color: Colors.blueGrey,
-                              );
-                            }).toList(),
-                          ),
-                        ),
-                        const SizedBox(height: 20),
-                      ],
-
-                      // Sensores primarios + secundarios
-                      ...sensoresPrimarios.map((primario) {
-                        final secundarios =
-                            secundariosPorPrimario[primario['id']] ??
-                                [];
-                        return ExpansionTile(
-                          title: Text(
-                            primario['nombre'] as String,
-                            style: Theme.of(context)
-                                .textTheme
-                                .titleMedium,
-                          ),
-                          children: [
-                            Wrap(
-                              spacing: 8,
-                              runSpacing: 8,
-                              children: buildSensorCards(primario, [
-                                'temperatura',
-                                'humedad',
-                                'ph',
-                                'ec',
-                                'radiacion',
-                                'n',
-                                'p',
-                                'k'
-                              ], s),
-                            ),
-                            const SizedBox(height: 10),
-                            ...secundarios.map((sec) {
-                              return Padding(
-                                padding: const EdgeInsets.only(left: 0),
-                                child: Column(
-                                  crossAxisAlignment:
-                                      CrossAxisAlignment.start,
-                                  children: [
-                                    Text(sec['nombre'] as String,
-                                        style: Theme.of(context)
-                                            .textTheme
-                                            .titleSmall),
-                                    Padding(
-                                      padding: const EdgeInsets.only(
-                                          bottom: 10),
-                                      child: Wrap(
-                                        spacing: 8,
-                                        runSpacing: 8,
-                                        children: buildSensorCards(
-                                          sec,
-                                          ['temperatura', 'humedad', 'ec'],
-                                          s,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              );
-                            }),
-                          ],
-                        );
-                      }),
-                    ],
-                  ),
-                ],
+    return BaseScaffold(
+      title: s.navDashboard,
+      body: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          if (ambiente.isNotEmpty) ...[
+            Text(s.condicionesAmbientales,
+                style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: 10),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              child: Wrap(
+                spacing: 10,
+                runSpacing: 10,
+                children: ambiente.entries.map((e) {
+                  final parts = e.value.split(' ');
+                  return SensorCard(
+                    title: e.key,
+                    value: parts[0],
+                    unit: parts.length > 1 ? parts[1] : '',
+                    color: Colors.blueGrey,
+                  );
+                }).toList(),
               ),
             ),
+            const SizedBox(height: 20),
           ],
-        ),
+
+          // Sensores primarios
+          ...sensoresPrimarios.map((primario) {
+            final datos        = primario['datos'] as Map<String, dynamic>;
+            final ts           = datos['timestamp'] as int?;
+            final desconectado = _esDesconectado(datos);
+
+            return ExpansionTile(
+              initiallyExpanded: true,
+              title: Text(
+                primario['nombre'] as String,
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+              subtitle: Text(
+                _formatTiempo(ts, s),
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Theme.of(context)
+                      .colorScheme
+                      .onSurface
+                      .withValues(alpha: 0.5),
+                ),
+              ),
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                  child: Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: buildSensorCards(
+                      primario,
+                      ['temperatura', 'humedad', 'ph', 'ec', 'radiacion', 'n', 'p', 'k'],
+                      s,
+                      desconectado: desconectado,
+                    ),
+                  ),
+                ),
+              ],
+            );
+          }),
+        ],
       ),
     );
   }

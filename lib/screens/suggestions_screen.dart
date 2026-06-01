@@ -16,6 +16,8 @@ class _SugerenciasScreenState extends State<SugerenciasScreen> {
   final _db = DatabaseHelper();
   List<Sugerencia> _sugerencias = [];
   bool _cargando = true;
+  bool _sinDatos = false;
+  int? _ultimoTimestamp;
 
   static const Map<String, String> _nombresParams = {
     'n':           'Nitrógeno',
@@ -43,17 +45,34 @@ class _SugerenciasScreenState extends State<SugerenciasScreen> {
   void initState() {
     super.initState();
     _cargar();
+    autoSyncEpoch.addListener(_onAutoSync);
+  }
+
+  void _onAutoSync() { if (mounted) _cargar(); }
+
+  @override
+  void dispose() {
+    autoSyncEpoch.removeListener(_onAutoSync);
+    super.dispose();
   }
 
   Future<void> _cargar() async {
     setState(() => _cargando = true);
     final data = await _db.getUltimaMedicionCompleta();
     if (data == null) {
-      setState(() { _sugerencias = []; _cargando = false; });
+      setState(() { _sugerencias = []; _sinDatos = true; _cargando = false; _ultimoTimestamp = null; });
       return;
     }
+    _sinDatos = false;
 
     final sensores = data['primarios'] as List<dynamic>;
+
+    int? maxTs;
+    for (final s in sensores) {
+      final ts = s['timestamp'] as int?;
+      if (ts != null && (maxTs == null || ts > maxTs)) maxTs = ts;
+    }
+
     final todas = <Sugerencia>[];
 
     for (final sensor in sensores) {
@@ -73,8 +92,19 @@ class _SugerenciasScreenState extends State<SugerenciasScreen> {
 
     setState(() {
       _sugerencias = todas;
+      _ultimoTimestamp = maxTs;
       _cargando = false;
     });
+  }
+
+  String _formatTiempo(int? ts, AppStrings s) {
+    if (ts == null) return s.sinLecturas;
+    final fecha = DateTime.fromMillisecondsSinceEpoch(ts * 1000);
+    final diff = DateTime.now().difference(fecha);
+    if (diff.inMinutes < 1) return s.haceUnMomento;
+    if (diff.inMinutes < 60) return s.haceMins(diff.inMinutes);
+    if (diff.inHours < 24) return s.haceHoras(diff.inHours);
+    return '${fecha.day}/${fecha.month}/${fecha.year}';
   }
 
   IconData _iconoPorNivel(String nivel) {
@@ -88,9 +118,9 @@ class _SugerenciasScreenState extends State<SugerenciasScreen> {
 
   Color _colorPorNivel(String nivel) {
     switch (nivel) {
-      case 'crítico': return Colors.red.shade600;
-      case 'bajo':    return Colors.orange.shade700;
-      case 'alto':    return Colors.blue.shade600;
+      case 'crítico': return Colors.red.shade700;
+      case 'bajo':    return Colors.orange.shade800;
+      case 'alto':    return Colors.orange.shade600;
       default:        return Colors.grey.shade600;
     }
   }
@@ -122,7 +152,9 @@ class _SugerenciasScreenState extends State<SugerenciasScreen> {
                   _tarjetaInfo(s, primary, onSurface),
                   const SizedBox(height: 12),
                   if (_sugerencias.isEmpty)
-                    _estadoVacio(s, primary, onSurface)
+                    _sinDatos
+                        ? _sinSensores(s, onSurface)
+                        : _estadoVacio(s, primary, onSurface)
                   else ...[
                     _contadorResumen(),
                     const SizedBox(height: 12),
@@ -145,20 +177,41 @@ class _SugerenciasScreenState extends State<SugerenciasScreen> {
     color: primary.withValues(alpha: 0.07),
     child: Padding(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      child: Row(
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(Icons.lightbulb_outline, color: primary, size: 20),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              s.sugerenciasInfo,
-              style: TextStyle(
-                  fontSize: 13,
-                  color: onSurface.withValues(alpha: 0.75),
-                  height: 1.4),
-            ),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(Icons.lightbulb_outline, color: primary, size: 20),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  s.sugerenciasInfo,
+                  style: TextStyle(
+                      fontSize: 14,
+                      color: onSurface.withValues(alpha: 0.85),
+                      height: 1.4),
+                ),
+              ),
+            ],
           ),
+          if (_ultimoTimestamp != null) ...[
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Icon(Icons.access_time_rounded,
+                    size: 13, color: onSurface.withValues(alpha: 0.45)),
+                const SizedBox(width: 4),
+                Text(
+                  '${s.ultimaLectura}: ${_formatTiempo(_ultimoTimestamp, s)}',
+                  style: TextStyle(
+                      fontSize: 12,
+                      color: onSurface.withValues(alpha: 0.5)),
+                ),
+              ],
+            ),
+          ],
         ],
       ),
     ),
@@ -189,6 +242,24 @@ class _SugerenciasScreenState extends State<SugerenciasScreen> {
         style: TextStyle(fontSize: 12, color: color, fontWeight: FontWeight.w600)),
   );
 
+  Widget _sinSensores(AppStrings s, Color onSurface) => Padding(
+    padding: const EdgeInsets.symmetric(vertical: 40),
+    child: Column(mainAxisSize: MainAxisSize.min, children: [
+      Icon(Icons.sensors_off_rounded,
+          size: 60, color: onSurface.withValues(alpha: 0.25)),
+      const SizedBox(height: 14),
+      Text(s.sinSugerenciasSinSensores,
+          style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 17)),
+      const SizedBox(height: 8),
+      Text(s.sinSugerenciasSinSensoresSub,
+          textAlign: TextAlign.center,
+          style: TextStyle(
+              fontSize: 14,
+              color: onSurface.withValues(alpha: 0.6),
+              height: 1.4)),
+    ]),
+  );
+
   Widget _estadoVacio(AppStrings s, Color primary, Color onSurface) => Padding(
     padding: const EdgeInsets.symmetric(vertical: 40),
     child: Column(mainAxisSize: MainAxisSize.min, children: [
@@ -201,8 +272,8 @@ class _SugerenciasScreenState extends State<SugerenciasScreen> {
       Text(s.sinSugerenciasSub,
           textAlign: TextAlign.center,
           style: TextStyle(
-              fontSize: 13,
-              color: onSurface.withValues(alpha: 0.55),
+              fontSize: 14,
+              color: onSurface.withValues(alpha: 0.7),
               height: 1.4)),
     ]),
   );
@@ -288,8 +359,8 @@ class _SugerenciasScreenState extends State<SugerenciasScreen> {
                   const SizedBox(height: 8),
                   Text(sug.mensaje,
                       style: TextStyle(
-                          fontSize: 13,
-                          color: onSurface.withValues(alpha: 0.75),
+                          fontSize: 14,
+                          color: onSurface.withValues(alpha: 0.87),
                           height: 1.4)),
                 ],
               ),
