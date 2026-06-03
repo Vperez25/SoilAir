@@ -11,7 +11,12 @@
       "Bash(Select-Object Name)",
       "Bash(dart analyze *)",
       "Bash(flutter pub *)",
-      "Bash(echo \"EXIT:$?\")"
+      "Bash(echo \"EXIT:$?\")",
+      "Bash(del \"lib\\\\screens\\\\wifi_config_screen.dart\")",
+      "Bash(del \"lib\\\\widgets\\\\side_menu.dart\")",
+      "Bash(Remove-Item \"C:\\\\Users\\\\Stell\\\\AndroidProjects\\\\Soilair-main\\\\lib\\\\screens\\\\wifi_config_screen.dart\" -Force)",
+      "Bash(Remove-Item \"C:\\\\Users\\\\Stell\\\\AndroidProjects\\\\Soilair-main\\\\lib\\\\widgets\\\\side_menu.dart\" -Force)",
+      "Bash(dart pub *)"
     ]
   }
 }

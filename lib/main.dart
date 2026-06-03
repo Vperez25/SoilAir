@@ -1,13 +1,10 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:showcaseview/showcaseview.dart';
 import 'package:soilair/l10n/app_strings.dart';
-import 'package:soilair/services/conexion_wifi.dart';
+import 'package:soilair/services/auto_sync_service.dart';
 import 'package:soilair/services/database.dart';
-import 'package:soilair/services/json_reader_wifi.dart';
 import 'package:soilair/services/plants_reader.dart';
 import 'package:soilair/services/tutorial_service.dart';
-import 'package:soilair/services/wifi_nativo_service.dart';
 import 'package:soilair/screens/dashboard_screen.dart';
 import 'package:soilair/screens/sensores_screen.dart';
 import 'package:soilair/screens/suggestions_screen.dart';
@@ -15,9 +12,8 @@ import 'package:soilair/screens/historial_screen.dart';
 import 'package:soilair/screens/configuracion_screen.dart';
 import 'theme/app_light_theme.dart';
 
-final ValueNotifier<ThemeMode> appThemeMode  = ValueNotifier(ThemeMode.light);
-final ValueNotifier<String>    appLanguage   = ValueNotifier('es');
-final ValueNotifier<int>       autoSyncEpoch = ValueNotifier(0);
+final ValueNotifier<ThemeMode> appThemeMode = ValueNotifier(ThemeMode.light);
+final ValueNotifier<String>    appLanguage  = ValueNotifier('es');
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -71,44 +67,22 @@ class _MainNavigationState extends State<MainNavigation> {
   bool _tutorialPendiente = false;
   bool _tutorialIniciado  = false;
 
-  final _wifiNativo      = WifiNativoService();
-  Timer? _autoSyncTimer;
-  bool _sincronizandoAuto = false;
+  AutoSyncService? _autoSync;
 
   @override
   void initState() {
     super.initState();
     appLanguage.addListener(_rebuild);
     _verificarTutorial();
-    _autoSyncTimer = Timer.periodic(
-      const Duration(seconds: 60),
-      (_) => _autoSync(),
-    );
+    _autoSync = AutoSyncService();
+    _autoSync!.start();
   }
 
   void _rebuild() { if (mounted) setState(() {}); }
 
-  Future<void> _autoSync() async {
-    if (_sincronizandoAuto) return;
-    final enRed = await _wifiNativo.estaEnRedSoilair();
-    if (!enRed) return;
-    _sincronizandoAuto = true;
-    try {
-      final ssid = await _wifiNativo.redActual();
-      final resultado = await ConexionWiFi().descargarTodosYEliminar(
-        (jsonStr) => JsonReaderWiFi(ssid: ssid).importJsonFromString(jsonStr),
-      );
-      if (resultado.exito) autoSyncEpoch.value++;
-    } catch (_) {
-      // silent — background sync failures are non-fatal
-    } finally {
-      _sincronizandoAuto = false;
-    }
-  }
-
   @override
   void dispose() {
-    _autoSyncTimer?.cancel();
+    _autoSync?.stop();
     appLanguage.removeListener(_rebuild);
     super.dispose();
   }

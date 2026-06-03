@@ -41,13 +41,6 @@ class JsonReaderWiFi {
           'temperatura': _parse(s['temperatura']),
           'radiacion': _parse(s['radiacion']),
         });
-        // Registrar en admin_sensores la primera vez que aparece
-        await db.addSensorIfNotExists({
-          'id': s['id'],
-          'nombre': null,
-          'cultivo_asignado': null,
-          if (ssid != null) 'ssid': ssid,
-        });
       }
     }
 

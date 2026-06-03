@@ -14,8 +14,7 @@ class _AdminSensorsBodyState extends State<AdminSensorsBody> {
 
   List<Map<String, dynamic>> _cultivos = [];
   Map<String, dynamic>? _configuracion;
-  List<Map<String, dynamic>> _sensoresPrimarios = [];
-  List<Map<String, dynamic>> _sensoresSecundarios = [];
+  List<Map<String, dynamic>> _sensores = [];
   bool _cargando = true;
 
   @override
@@ -28,13 +27,11 @@ class _AdminSensorsBodyState extends State<AdminSensorsBody> {
     setState(() => _cargando = true);
     final cultivos = await _db.getCultivos();
     final config = await _db.getConfiguracion();
-    final primarios = await _db.getTodosSensoresPrimarios();
-    final secundarios = await _db.getTodosSensoresSecundarios();
+    final sensores = await _db.getSensoresAdmin();
     setState(() {
       _cultivos = cultivos;
       _configuracion = config;
-      _sensoresPrimarios = primarios;
-      _sensoresSecundarios = secundarios;
+      _sensores = sensores;
       _cargando = false;
     });
   }
@@ -121,7 +118,6 @@ class _AdminSensorsBodyState extends State<AdminSensorsBody> {
   Widget build(BuildContext context) {
     if (_cargando) return const Center(child: CircularProgressIndicator());
 
-    final hayDatos = _sensoresPrimarios.isNotEmpty || _sensoresSecundarios.isNotEmpty;
 
     return RefreshIndicator(
       onRefresh: _cargar,
@@ -190,7 +186,7 @@ class _AdminSensorsBodyState extends State<AdminSensorsBody> {
           ),
           const SizedBox(height: 8),
 
-          if (!hayDatos)
+          if (_sensores.isEmpty)
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 32),
               child: Column(
@@ -198,12 +194,12 @@ class _AdminSensorsBodyState extends State<AdminSensorsBody> {
                   Icon(Icons.sensors_off, size: 52, color: Colors.grey.shade400),
                   const SizedBox(height: 12),
                   const Text(
-                    'No hay sensores registrados',
+                    'No hay módulos asociados',
                     style: TextStyle(fontWeight: FontWeight.w500),
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    'Conecta el nodo y sincroniza desde la pestaña "Conectar".',
+                    'Asocia un módulo desde la pestaña "Módulos".',
                     textAlign: TextAlign.center,
                     style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
                   ),
@@ -211,28 +207,16 @@ class _AdminSensorsBodyState extends State<AdminSensorsBody> {
               ),
             )
           else ...[
-            if (_sensoresPrimarios.isNotEmpty) ...[
-              const Padding(
-                padding: EdgeInsets.symmetric(vertical: 4),
-                child: Text('Primarios', style: TextStyle(color: Colors.grey, fontSize: 13)),
-              ),
-              ..._sensoresPrimarios.map((s) => _tarjetaSensor(
-                    id: s['id'] as String,
-                    timestamp: s['ultimo_timestamp'] as int?,
-                    icono: Icons.sensors,
-                  )),
-            ],
-            if (_sensoresSecundarios.isNotEmpty) ...[
-              const Padding(
-                padding: EdgeInsets.only(top: 12, bottom: 4),
-                child: Text('Secundarios', style: TextStyle(color: Colors.grey, fontSize: 13)),
-              ),
-              ..._sensoresSecundarios.map((s) => _tarjetaSensor(
-                    id: s['id'] as String,
-                    timestamp: s['ultimo_timestamp'] as int?,
-                    icono: Icons.device_hub,
-                  )),
-            ],
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 4),
+              child: Text('Módulos asociados', style: TextStyle(color: Colors.grey, fontSize: 13)),
+            ),
+            ..._sensores.map((s) => _tarjetaSensor(
+                  id: s['id'] as String,
+                  nombre: s['nombre'] as String?,
+                  cultivoNombre: s['cultivo_nombre'] as String?,
+                  timestamp: s['ultimo_timestamp'] as int?,
+                )),
           ],
         ],
       ),
@@ -241,24 +225,53 @@ class _AdminSensorsBodyState extends State<AdminSensorsBody> {
 
   Widget _tarjetaSensor({
     required String id,
+    required String? nombre,
+    required String? cultivoNombre,
     required int? timestamp,
-    required IconData icono,
   }) {
+    final configurado = nombre != null;
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 4),
       elevation: 0,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(10),
-        side: const BorderSide(color: AppLightTheme.divisor),
+        side: BorderSide(
+          color: configurado ? AppLightTheme.divisor : Colors.orange.shade200,
+        ),
       ),
       child: ListTile(
         leading: CircleAvatar(
-          backgroundColor: AppLightTheme.botonPrincipal.withValues(alpha: 0.1),
-          child: Icon(icono, color: AppLightTheme.botonPrincipal, size: 20),
+          backgroundColor: configurado
+              ? AppLightTheme.botonPrincipal.withValues(alpha: 0.1)
+              : Colors.orange.withValues(alpha: 0.1),
+          child: Icon(
+            configurado ? Icons.sensors : Icons.sensors_off,
+            color: configurado ? AppLightTheme.botonPrincipal : Colors.orange.shade700,
+            size: 20,
+          ),
         ),
-        title: Text(id, style: const TextStyle(fontWeight: FontWeight.w500)),
-        subtitle: Text(_formatFecha(timestamp), style: const TextStyle(fontSize: 12)),
-        trailing: const Icon(Icons.check_circle, color: Colors.green, size: 18),
+        title: Text(
+          nombre ?? 'Sin configurar',
+          style: TextStyle(
+            fontWeight: FontWeight.w500,
+            color: configurado ? null : Colors.orange,
+          ),
+        ),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (cultivoNombre != null)
+              Text(cultivoNombre, style: const TextStyle(fontSize: 12)),
+            Text(
+              _formatFecha(timestamp),
+              style: const TextStyle(fontSize: 12),
+            ),
+          ],
+        ),
+        isThreeLine: cultivoNombre != null,
+        trailing: configurado
+            ? const Icon(Icons.check_circle, color: Colors.green, size: 18)
+            : Icon(Icons.warning_amber_rounded, color: Colors.orange.shade400, size: 18),
       ),
     );
   }

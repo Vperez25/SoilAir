@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:soilair/l10n/app_strings.dart';
 import 'package:soilair/main.dart';
+import 'package:soilair/screens/faq_screen.dart';
 import 'package:soilair/theme/app_light_theme.dart';
 import 'package:soilair/widgets/base_scaffold.dart';
 
@@ -41,6 +42,17 @@ class ConfiguracionScreen extends StatelessWidget {
             ),
           ),
 
+          // ── FAQ ──────────────────────────────────────────────
+          _seccion(s.faqSeccion),
+          ListTile(
+            leading: const Icon(Icons.help_outline,
+                color: AppLightTheme.botonPrincipal),
+            title: Text(s.faqSeccion),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => Navigator.push(context,
+                MaterialPageRoute(builder: (_) => const FaqScreen())),
+          ),
+
           // ── Información ───────────────────────────────────────
           _seccion(s.informacion),
           ListTile(
@@ -55,6 +67,7 @@ class ConfiguracionScreen extends StatelessWidget {
             trailing: const Text('Android 10+',
                 style: TextStyle(color: Colors.grey)),
           ),
+          const SizedBox(height: 16),
         ],
       ),
     );

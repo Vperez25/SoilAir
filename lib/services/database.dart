@@ -18,7 +18,7 @@ class DatabaseHelper {
   Future<Database> _initDB() async {
     final dbPath = await getDatabasesPath();
     final path = join(dbPath, 'soilair.db');
-    return await openDatabase(path, version: 8, onCreate: _onCreate, onUpgrade: _onUpgrade);
+    return await openDatabase(path, version: 9, onCreate: _onCreate, onUpgrade: _onUpgrade);
   }
 
   // ── Schemas ─────────────────────────────────────────────────
@@ -56,6 +56,9 @@ class DatabaseHelper {
 
   Future<void> _onCreate(Database db, int version) async {
     await db.execute(_schemaPrimarios);
+    await db.execute(
+      'CREATE UNIQUE INDEX IF NOT EXISTS idx_pri_id_ts ON sensores_primarios(id, timestamp)',
+    );
     await db.execute('''
       CREATE TABLE admin_sensores (
         id_key           INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -164,18 +167,24 @@ class DatabaseHelper {
     if (oldVersion < 8) {
       await db.execute('ALTER TABLE admin_sensores ADD COLUMN ssid TEXT');
     }
+    if (oldVersion < 9) {
+      await db.execute(
+        'CREATE UNIQUE INDEX IF NOT EXISTS idx_pri_id_ts ON sensores_primarios(id, timestamp)',
+      );
+    }
   }
 
   // ── Escritura: primarios ─────────────────────────────────────
 
-  /// Inserta una lectura nueva — NO reemplaza, acumula historial.
+  /// Inserta una lectura nueva — ignora duplicados (id, timestamp) idempotente al drenar varios nodos.
   Future<int> insertSensorPrimario(Map<String, dynamic> sensor) async {
     final db = await database;
     final data = Map<String, dynamic>.from(sensor)
       ..remove('nombre')
       ..remove('cultivo_id');
     data.putIfAbsent('radiacion', () => null);
-    return await db.insert('sensores_primarios', data);
+    return await db.insert('sensores_primarios', data,
+        conflictAlgorithm: ConflictAlgorithm.ignore);
   }
 
   // Alias de compatibilidad con código existente
@@ -288,13 +297,25 @@ class DatabaseHelper {
 
   Future<Map<String, dynamic>?> getUltimaMedicionCompleta() async {
     final db = await database;
-    final result = await db
-        .rawQuery('SELECT MAX(timestamp) as max_ts FROM sensores_ambientales');
-    final int? maxTs = result.first['max_ts'] as int?;
+
+    // Anchor on primarios so the dashboard works even if sensores_ambientales is empty.
+    final priResult = await db
+        .rawQuery('SELECT MAX(timestamp) as max_ts FROM sensores_primarios');
+    final int? maxTs = priResult.first['max_ts'] as int?;
     if (maxTs == null) return null;
 
-    final ambiente = await db.query('sensores_ambientales',
-        where: 'timestamp = ?', whereArgs: [maxTs], limit: 1);
+    // Ambient data — use if available, otherwise fall back to a placeholder.
+    final ambResult = await db
+        .rawQuery('SELECT MAX(timestamp) as max_ts FROM sensores_ambientales');
+    final int? ambTs = ambResult.first['max_ts'] as int?;
+    Map<String, dynamic> ambiente;
+    if (ambTs != null) {
+      final rows = await db.query('sensores_ambientales',
+          where: 'timestamp = ?', whereArgs: [ambTs], limit: 1);
+      ambiente = rows.first;
+    } else {
+      ambiente = {'timestamp': maxTs, 'temperatura': null, 'humedad': null};
+    }
 
     final primarios = await db.rawQuery('''
       SELECT sp.*, ads.nombre
@@ -316,7 +337,7 @@ class DatabaseHelper {
 
     return {
       'timestamp': maxTs,
-      'ambiente': ambiente.first,
+      'ambiente': ambiente,
       'primarios': primarios,
       'secundarios': secundarios,
     };
@@ -374,6 +395,29 @@ class DatabaseHelper {
     return await db.query('sensores_ambientales',
         orderBy: 'timestamp ASC',
         where: where, whereArgs: args.isEmpty ? null : args, limit: limite);
+  }
+
+  // ── Lecturas: reporte completo (sin límite) ───────────────────
+
+  Future<List<Map<String, dynamic>>> getHistorialCompletoSensorPrimario(
+      String sensorId) async {
+    final db = await database;
+    return db.query(
+      'sensores_primarios',
+      columns: ['timestamp', 'n', 'p', 'k', 'ph', 'humedad', 'ec', 'temperatura', 'radiacion'],
+      where: 'id = ?',
+      whereArgs: [sensorId],
+      orderBy: 'timestamp ASC',
+    );
+  }
+
+  Future<List<Map<String, dynamic>>> getHistorialCompletoAmbiental() async {
+    final db = await database;
+    return db.query(
+      'sensores_ambientales',
+      columns: ['timestamp', 'temperatura', 'humedad'],
+      orderBy: 'timestamp ASC',
+    );
   }
 
   // ── Cultivos ─────────────────────────────────────────────────
@@ -605,5 +649,28 @@ class DatabaseHelper {
     final db = await database;
     final r = await db.query('admin_sensores', columns: ['id', 'nombre']);
     return {for (final row in r) row['id'] as String: row['nombre'] as String?};
+  }
+
+  /// Todos los módulos asociados (admin_sensores visibles) con su último timestamp.
+  Future<List<Map<String, dynamic>>> getSensoresAdmin() async {
+    final db = await database;
+    return await db.rawQuery('''
+      SELECT a.id, a.nombre, a.cultivo_asignado, a.ssid,
+             c.nombre AS cultivo_nombre,
+             MAX(sp.timestamp) AS ultimo_timestamp
+      FROM admin_sensores a
+      LEFT JOIN cultivos c ON c.id = a.cultivo_asignado
+      LEFT JOIN sensores_primarios sp ON sp.id = a.id
+      WHERE COALESCE(a.oculto, 0) = 0
+      GROUP BY a.id
+      ORDER BY a.id
+    ''');
+  }
+
+  /// Oculta todos los sensores del nodo indicado al deasociar.
+  Future<void> ocultarSensoresDeSsid(String ssid) async {
+    final db = await database;
+    await db.update('admin_sensores', {'oculto': 1},
+        where: 'ssid = ?', whereArgs: [ssid]);
   }
 }

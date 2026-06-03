@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:soilair/l10n/app_strings.dart';
 import 'package:soilair/main.dart';
+import 'package:soilair/services/data_events.dart';
 import 'package:soilair/widgets/base_scaffold.dart';
 import 'package:soilair/services/database.dart';
 import 'package:soilair/services/recommendations.dart';
@@ -45,20 +46,22 @@ class _SugerenciasScreenState extends State<SugerenciasScreen> {
   void initState() {
     super.initState();
     _cargar();
-    autoSyncEpoch.addListener(_onAutoSync);
+    DataEvents.instance.version.addListener(_recargar);
   }
 
-  void _onAutoSync() { if (mounted) _cargar(); }
+  void _recargar() { if (mounted) _cargar(); }
 
   @override
   void dispose() {
-    autoSyncEpoch.removeListener(_onAutoSync);
+    DataEvents.instance.version.removeListener(_recargar);
     super.dispose();
   }
 
   Future<void> _cargar() async {
+    if (!mounted) return;
     setState(() => _cargando = true);
     final data = await _db.getUltimaMedicionCompleta();
+    if (!mounted) return;
     if (data == null) {
       setState(() { _sugerencias = []; _sinDatos = true; _cargando = false; _ultimoTimestamp = null; });
       return;
@@ -77,6 +80,7 @@ class _SugerenciasScreenState extends State<SugerenciasScreen> {
 
     for (final sensor in sensores) {
       final rangos = await _db.getRangosCultivoAsignado(sensor['id']);
+      if (!mounted) return;
       if (rangos != null) {
         todas.addAll(EvaluadorSugerencias.evaluarSensor(
           sensor: sensor,
@@ -90,6 +94,7 @@ class _SugerenciasScreenState extends State<SugerenciasScreen> {
       return (orden[a.nivel] ?? 3).compareTo(orden[b.nivel] ?? 3);
     });
 
+    if (!mounted) return;
     setState(() {
       _sugerencias = todas;
       _ultimoTimestamp = maxTs;

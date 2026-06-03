@@ -135,6 +135,19 @@ class AppStrings {
   String get dispositivosSoportados=> _t('dispositivosSoportados');
   String get idiomaActualizado     => _t('idiomaActualizado');
   String get sensorGuardado        => _t('sensorGuardado');
+  String get generandoReporte      => _t('generandoReporte');
+  String get reporteError          => _t('reporteError');
+  String get faqSeccion            => _t('faqSeccion');
+  String get faq1Q                 => _t('faq1Q');
+  String get faq1A                 => _t('faq1A');
+  String get faq2Q                 => _t('faq2Q');
+  String get faq2A                 => _t('faq2A');
+  String get faq3Q                 => _t('faq3Q');
+  String get faq3A                 => _t('faq3A');
+  String get faq4Q                 => _t('faq4Q');
+  String get faq4A                 => _t('faq4A');
+  String get faq5Q                 => _t('faq5Q');
+  String get faq5A                 => _t('faq5A');
 
   // ── Tutorial: navegación ───────────────────────────────────────
   String get tutorialNavDashboardTitulo  => _t('tutorialNavDashboardTitulo');
@@ -325,6 +338,19 @@ class AppStrings {
       'dispositivosSoportados': 'Dispositivos soportados',
       'idiomaActualizado':      'Idioma actualizado',
       'sensorGuardado':         'Sensor configurado',
+      'generandoReporte':       'Generando reporte...',
+      'reporteError':           'Error al generar el reporte',
+      'faqSeccion':             'Preguntas frecuentes',
+      'faq1Q':                  '¿Cómo sincronizo mi sensor?',
+      'faq1A':                  'Ve a la pestaña Sensores. Asegúrate de estar cerca del nodo ESP32 y toca el botón "Sincronizar" en la tarjeta del nodo detectado. La app se conectará automáticamente y descargará los datos.',
+      'faq2Q':                  '¿Por qué no aparecen sugerencias?',
+      'faq2A':                  'Las sugerencias requieren que el sensor tenga un cultivo asignado. Ve a Sensores, toca el ícono de edición del sensor y selecciona el cultivo correspondiente.',
+      'faq3Q':                  '¿Por qué los datos del dashboard son antiguos?',
+      'faq3A':                  'Los datos solo se actualizan al sincronizar con el nodo. Si la app detecta que estás conectado a una red SOILAIR_, sincronizará automáticamente cada 60 segundos.',
+      'faq4Q':                  '¿Qué significan los colores en el dashboard?',
+      'faq4A':                  'Verde: el valor está dentro del rango óptimo del cultivo. Naranja: fuera del rango ideal pero no crítico. Rojo: en zona crítica, se recomienda atención inmediata. Gris: sin cultivo asignado.',
+      'faq5Q':                  '¿Puedo conectar más de un sensor?',
+      'faq5A':                  'Sí. Cada nodo SOILAIR_ es independiente. Sincroniza cada uno desde la pestaña Sensores y asígnale un nombre y cultivo. Todos aparecerán en el dashboard.',
     },
     // ════════════════════════════════════════════════════════════
     'en': {
@@ -454,6 +480,19 @@ class AppStrings {
       'dispositivosSoportados': 'Supported devices',
       'idiomaActualizado':      'Language updated',
       'sensorGuardado':         'Sensor configured',
+      'generandoReporte':       'Generating report...',
+      'reporteError':           'Error generating report',
+      'faqSeccion':             'Frequently asked questions',
+      'faq1Q':                  'How do I sync my sensor?',
+      'faq1A':                  'Go to the Sensors tab. Make sure you are near the ESP32 node and tap the "Sync" button on the detected node card. The app will connect automatically and download the data.',
+      'faq2Q':                  'Why are there no suggestions?',
+      'faq2A':                  'Suggestions require the sensor to have a crop assigned. Go to Sensors, tap the edit icon on the sensor and select the corresponding crop.',
+      'faq3Q':                  'Why is the dashboard data old?',
+      'faq3A':                  'Data is only updated when syncing with the node. If the app detects you are connected to a SOILAIR_ network, it will sync automatically every 60 seconds.',
+      'faq4Q':                  'What do the colors on the dashboard mean?',
+      'faq4A':                  'Green: value is within the optimal crop range. Orange: outside the ideal range but not critical. Red: in the critical zone, immediate attention recommended. Grey: no crop assigned.',
+      'faq5Q':                  'Can I connect more than one sensor?',
+      'faq5A':                  'Yes. Each SOILAIR_ node is independent. Sync each one from the Sensors tab and assign it a name and crop. All will appear on the dashboard.',
     },
     // ════════════════════════════════════════════════════════════
     'fr': {
@@ -583,6 +622,19 @@ class AppStrings {
       'dispositivosSoportados': 'Appareils pris en charge',
       'idiomaActualizado':      'Langue mise à jour',
       'sensorGuardado':         'Capteur configuré',
+      'generandoReporte':       'Génération du rapport...',
+      'reporteError':           'Erreur lors de la génération du rapport',
+      'faqSeccion':             'Questions fréquentes',
+      'faq1Q':                  'Comment synchroniser mon capteur ?',
+      'faq1A':                  "Allez dans l'onglet Capteurs. Assurez-vous d'être près du nœud ESP32 et appuyez sur le bouton « Synchroniser » sur la carte du nœud détecté. L'application se connectera automatiquement et téléchargera les données.",
+      'faq2Q':                  "Pourquoi n'y a-t-il pas de suggestions ?",
+      'faq2A':                  "Les suggestions nécessitent qu'une culture soit assignée au capteur. Allez dans Capteurs, appuyez sur l'icône de modification et sélectionnez la culture correspondante.",
+      'faq3Q':                  'Pourquoi les données du tableau de bord sont-elles anciennes ?',
+      'faq3A':                  "Les données ne se mettent à jour que lors d'une synchronisation. Si l'application détecte une connexion à un réseau SOILAIR_, elle synchronise automatiquement toutes les 60 secondes.",
+      'faq4Q':                  'Que signifient les couleurs du tableau de bord ?',
+      'faq4A':                  "Vert : valeur dans la plage optimale. Orange : hors de la plage idéale mais non critique. Rouge : zone critique, attention immédiate recommandée. Gris : aucune culture assignée.",
+      'faq5Q':                  'Puis-je connecter plusieurs capteurs ?',
+      'faq5A':                  "Oui. Chaque nœud SOILAIR_ est indépendant. Synchronisez chacun depuis l'onglet Capteurs et assignez-lui un nom et une culture. Tous apparaîtront sur le tableau de bord.",
     },
   };
 }

@@ -2,17 +2,13 @@
  * ═══════════════════════════════════════════════════════════════
  *  soilAir - Sistema Distribuido Escalable
  *  NODO GENERICO
+ *  Desarrollador: Vincent Perez Adriano
+ *  Fecha: 20/05/2026
  * ═══════════════════════════════════════════════════════════════
  *  Compatible con:
  *    - Arduino IDE  + ESP32 core v2.x y v3.x
  *    - PlatformIO   + espressif32 @ 6.x y 6.9+
  *    - ArduinoJson  v6.x  Y  v7.x  (deteccion automatica)
- *  Correcciones v5:
- *    - CSMA: espera canal libre antes de transmitir (evita colisiones)
- *    - Reconexion instantanea: reset de secuencia al detectar nodo offline que vuelve
- *    - LittleFS: max 20 archivos, borra el mas viejo automaticamente
- *    - Endpoint /format para limpiar flash manualmente
- *    - TIMEOUT 60s, INTERVALO 3s, doble envio ESP-NOW
  * ═══════════════════════════════════════════════════════════════
  */
 
@@ -46,11 +42,12 @@
 #define AP_SSID      "SOILAIR_NODO"
 #define AP_PASS      "soilair1"
 
-#define MAX_NODOS        32
-#define TTL_SALTOS        5
-#define INTERVALO_ENVIO   3000    // ms entre transmisiones
+#define MAX_NODOS          32
+#define TTL_SALTOS          5
+#define INTERVALO_ENVIO  30000    // ms entre transmisiones mesh
+#define INTERVALO_GUARDADO 60000 // ms entre guardados en disco (10 min)
 #define TIMEOUT_NODO     60000    // ms para considerar nodo offline
-#define MAX_ARCHIVOS         20   // max JSONs en LittleFS
+#define MAX_ARCHIVOS        150   // ~1 día con visita diaria
 #define CSMA_TIMEOUT_MS      60   // ms max esperando canal libre
 #define CSMA_SILENCIO_MS     15   // ms de silencio requerido antes de tx
 
@@ -64,9 +61,20 @@ uint8_t       nodosConocidos      = 0;
 uint32_t      secuenciaLocal      = 0;
 uint8_t       macBroadcast[]      = {0xFF,0xFF,0xFF,0xFF,0xFF,0xFF};
 unsigned long ultimoEnvio         = 0;
+unsigned long ultimoGuardado      = 0;
 unsigned long ultimoEstado        = 0;
 volatile unsigned long ultimoRx   = 0;  // ultimo instante en que se recibio algo (CSMA)
 String        claimToken          = "";
+long          timeOffset          = 0;  // epoch - millis()/1000
+bool          tieneHoraReal       = false;
+
+// ══════════════════════════════════════════════════════════════
+//  TIMESTAMP — epoch real si fue sincronizado, millis() si no
+// ══════════════════════════════════════════════════════════════
+unsigned long getTimestamp() {
+  if (tieneHoraReal) return (unsigned long)((long)(millis() / 1000) + timeOffset);
+  return millis() / 1000;
+}
 
 // ══════════════════════════════════════════════════════════════
 //  AUXILIARES
@@ -210,7 +218,7 @@ void generarDatosSimulados() {
   baseDatos[idx].activo         = true;
   baseDatos[idx].conectado      = true;
   baseDatos[idx].ultimoContacto = millis();
-  baseDatos[idx].timestamp      = millis() / 1000;
+  baseDatos[idx].timestamp      = getTimestamp();
   baseDatos[idx].secuencia      = secuenciaLocal;
   strncpy(baseDatos[idx].cultivo, NODO_NOMBRE, 11);
   baseDatos[idx].ambTemperatura  = randomFloat(25, 35);
@@ -286,7 +294,7 @@ void guardarJSONConsolidado() {
 #endif
 
   unsigned long ts = baseDatos[NODO_ID-1].timestamp;
-  if (ts == 0) ts = millis() / 1000;
+  if (ts == 0) ts = getTimestamp();
   doc["timestamp"] = ts;
 
   float sumT = 0, sumH = 0; int cnt = 0;
@@ -528,6 +536,27 @@ void handleClaimPost() {
   }
 }
 
+// /settime POST {"epoch": 1234567890} → sincroniza hora real
+void handleSetTime() {
+  String body = server.arg("plain");
+  if (body.length() == 0) { server.send(400, "text/plain", "Body requerido"); return; }
+#if ARDUINOJSON_VERSION_MAJOR >= 7
+  JsonDocument req;
+#else
+  DynamicJsonDocument req(128);
+#endif
+  if (deserializeJson(req, body)) { server.send(400, "text/plain", "JSON invalido"); return; }
+  long epoch = req["epoch"].as<long>();
+  if (epoch > 1000000000L) {
+    timeOffset = epoch - (long)(millis() / 1000);
+    tieneHoraReal = true;
+    Serial.printf("🕐 Hora sincronizada: %ld (offset: %ld)\n", epoch, timeOffset);
+    server.send(200, "application/json", "{\"ok\":true}");
+  } else {
+    server.send(400, "text/plain", "Epoch invalido");
+  }
+}
+
 // /claim DELETE {"token": "..."} → 200 si liberado, 403 si token incorrecto
 void handleClaimDelete() {
   String body = server.arg("plain");
@@ -591,14 +620,15 @@ void setup() {
   esp_now_add_peer(&peer);
   Serial.println("✅ ESP-NOW OK");
 
-  server.on("/list",   HTTP_GET,    handleList);
-  server.on("/get",    HTTP_GET,    handleGetFile);
-  server.on("/delete", HTTP_GET,    handleDelete);
-  server.on("/status", HTTP_GET,    handleStatus);
-  server.on("/format", HTTP_GET,    handleFormat);
-  server.on("/claim",  HTTP_GET,    handleClaimGet);
-  server.on("/claim",  HTTP_POST,   handleClaimPost);
-  server.on("/claim",  HTTP_DELETE, handleClaimDelete);
+  server.on("/list",    HTTP_GET,    handleList);
+  server.on("/get",     HTTP_GET,    handleGetFile);
+  server.on("/delete",  HTTP_GET,    handleDelete);
+  server.on("/status",  HTTP_GET,    handleStatus);
+  server.on("/format",  HTTP_GET,    handleFormat);
+  server.on("/settime", HTTP_POST,   handleSetTime);
+  server.on("/claim",   HTTP_GET,    handleClaimGet);
+  server.on("/claim",   HTTP_POST,   handleClaimPost);
+  server.on("/claim",   HTTP_DELETE, handleClaimDelete);
   server.begin();
   Serial.println("✅ HTTP Server OK");
 
@@ -639,6 +669,9 @@ void loop() {
     ultimoEnvio = millis();
     generarDatosSimulados();
     enviarDatosESPNOW();
+  }
+  if (millis() - ultimoGuardado >= INTERVALO_GUARDADO) {
+    ultimoGuardado = millis();
     guardarJSONConsolidado();
   }
   if (millis() - ultimoEstado >= 5000) {

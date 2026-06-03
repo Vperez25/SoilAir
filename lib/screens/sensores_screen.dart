@@ -149,6 +149,12 @@ class _SensoresScreenState extends State<SensoresScreen> {
       if (!mounted) break;
       await _abrirConfig(sen['id'] as String);
     }
+
+    // Wait for Android to release the WifiNetworkSpecifier binding before scanning
+    if (mounted) {
+      await Future.delayed(const Duration(seconds: 2));
+      if (mounted) _escanear();
+    }
   }
 
   // ── Liberar nodo desde la lista de detectados ─────────────────

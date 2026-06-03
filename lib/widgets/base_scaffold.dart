@@ -5,6 +5,7 @@ class BaseScaffold extends StatelessWidget {
   final Widget body;
   final Widget? drawer;
   final PreferredSizeWidget? bottom;
+  final List<Widget>? actions;
 
   const BaseScaffold({
     super.key,
@@ -12,6 +13,7 @@ class BaseScaffold extends StatelessWidget {
     required this.body,
     this.drawer,
     this.bottom,
+    this.actions,
   });
 
   @override
@@ -32,6 +34,7 @@ class BaseScaffold extends StatelessWidget {
         elevation: 0,
         iconTheme: IconThemeData(color: buttonColor),
         bottom: bottom,
+        actions: actions,
       ),
       drawer: drawer,
       body: body,

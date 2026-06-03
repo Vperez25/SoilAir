@@ -23,6 +23,8 @@ dependencies:
   wifi_scan: ^0.4.1         # escaneo automático de redes SOILAIR_*
   showcaseview: ^3.0.0
   shared_preferences: ^2.2.0
+  share_plus: ^10.0.0
+  pdf: ^3.10.8
 
 dev_dependencies:
   flutter_test:

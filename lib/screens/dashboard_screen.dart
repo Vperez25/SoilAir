@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:soilair/l10n/app_strings.dart';
 import 'package:soilair/main.dart';
+import 'package:soilair/services/data_events.dart';
 import 'package:soilair/services/database.dart';
 import 'package:soilair/theme/app_light_theme.dart';
 import 'package:soilair/widgets/sensor_card.dart';
@@ -26,18 +27,19 @@ class _DashboardScreenState extends State<DashboardScreen>
   void initState() {
     super.initState();
     cargarDatos();
-    autoSyncEpoch.addListener(_onAutoSync);
+    DataEvents.instance.version.addListener(_recargar);
   }
 
-  void _onAutoSync() { if (mounted) cargarDatos(); }
+  void _recargar() { if (mounted) cargarDatos(); }
 
   @override
   void dispose() {
-    autoSyncEpoch.removeListener(_onAutoSync);
+    DataEvents.instance.version.removeListener(_recargar);
     super.dispose();
   }
 
   Future<void> cargarDatos() async {
+    if (!mounted) return;
     setState(() => loading = true);
     final dbInstance = await db.database;
     final s = AppStrings.of(appLanguage.value);
@@ -77,6 +79,7 @@ class _DashboardScreenState extends State<DashboardScreen>
     }
     sensoresPrimarios = primarios;
 
+    if (!mounted) return;
     setState(() => loading = false);
   }
 

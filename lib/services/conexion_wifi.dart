@@ -87,6 +87,27 @@ class ConexionWiFi {
     }
   }
 
+  /// Consulta el estado del nodo: nodoId, nombre y lista de nodos en la red.
+  Future<Map<String, dynamic>> getStatus() async {
+    final response = await http
+        .get(Uri.parse("$baseUrl/status"))
+        .timeout(const Duration(seconds: 5));
+    if (response.statusCode != 200) throw Exception("Error status: ${response.statusCode}");
+    return jsonDecode(response.body) as Map<String, dynamic>;
+  }
+
+  /// Envía la hora actual al nodo para que use epoch real en los archivos.
+  Future<void> setTime() async {
+    final epoch = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+    await http
+        .post(
+          Uri.parse("$baseUrl/settime"),
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({'epoch': epoch}),
+        )
+        .timeout(const Duration(seconds: 5));
+  }
+
   /// Función principal — descarga todo, procesa y elimina
   Future<ResultadoSincronizacion> descargarTodosYEliminar(
     Future<void> Function(String jsonStr) procesarJson,

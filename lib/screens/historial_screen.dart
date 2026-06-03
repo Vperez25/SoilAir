@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:soilair/l10n/app_strings.dart';
 import 'package:soilair/main.dart';
+import 'package:soilair/services/data_events.dart';
 import 'package:soilair/services/database.dart';
+import 'package:soilair/services/report_service.dart';
 import 'package:soilair/theme/app_light_theme.dart';
 import 'package:soilair/widgets/base_scaffold.dart';
 
@@ -51,6 +53,7 @@ class _HistorialScreenState extends State<HistorialScreen> {
   List<String> _idsPrimarios = [];
   Map<String, String?> _nombresSensores = {};
   bool _cargando = true;
+  bool _generandoReporte = false;
 
   @override
   void initState() {
@@ -66,6 +69,41 @@ class _HistorialScreenState extends State<HistorialScreen> {
       _nombresSensores = nombres;
       _cargando = false;
     });
+  }
+
+  Future<void> _exportarPDF(AppStrings s) async {
+    if (_generandoReporte || _idsPrimarios.isEmpty) return;
+    setState(() => _generandoReporte = true);
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(s.generandoReporte),
+      duration: const Duration(seconds: 30),
+      backgroundColor: AppLightTheme.botonPrincipal,
+      behavior: SnackBarBehavior.floating,
+    ));
+    try {
+      // Usar nombres con fallback legible (p1 → "Sensor Principal") igual que el historial
+      final nombresDisplay = <String, String?>{
+        for (final id in _idsPrimarios) id: _nombreSensor(id, s),
+      };
+      await ReportService.generarYCompartir(
+        sensorIds: _idsPrimarios,
+        nombresSensores: nombresDisplay,
+      );
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).clearSnackBars();
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(s.reporteError),
+          backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating,
+        ));
+      }
+    } finally {
+      if (mounted) {
+        ScaffoldMessenger.of(context).clearSnackBars();
+        setState(() => _generandoReporte = false);
+      }
+    }
   }
 
   String _nombreSensor(String id, AppStrings s) {
@@ -85,6 +123,22 @@ class _HistorialScreenState extends State<HistorialScreen> {
 
     return BaseScaffold(
       title: s.navHistorial,
+      actions: [
+        if (_idsPrimarios.isNotEmpty)
+          _generandoReporte
+              ? const Padding(
+                  padding: EdgeInsets.all(14),
+                  child: SizedBox(
+                    width: 20, height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                )
+              : IconButton(
+                  icon: const Icon(Icons.download_outlined),
+                  tooltip: 'Exportar PDF',
+                  onPressed: () => _exportarPDF(s),
+                ),
+      ],
       body: Column(children: [
         _barraRango(s, rangos),
         const Divider(height: 1),
@@ -217,6 +271,15 @@ class _SensorSectionState extends State<_SensorSection> {
     super.initState();
     _campSel = widget.vars.first.campo;
     _cargarDatos();
+    DataEvents.instance.version.addListener(_onDatosNuevos);
+  }
+
+  void _onDatosNuevos() { if (mounted) _cargarDatos(silencioso: true); }
+
+  @override
+  void dispose() {
+    DataEvents.instance.version.removeListener(_onDatosNuevos);
+    super.dispose();
   }
 
   @override
@@ -238,8 +301,8 @@ class _SensorSectionState extends State<_SensorSection> {
     return null;
   }
 
-  Future<void> _cargarDatos() async {
-    setState(() => _cargando = true);
+  Future<void> _cargarDatos({bool silencioso = false}) async {
+    if (!silencioso) setState(() => _cargando = true);
     try {
       final desde = _fechaDesde();
       List<Map<String, dynamic>> filas;
@@ -254,6 +317,7 @@ class _SensorSectionState extends State<_SensorSection> {
             desde: desde);
       }
 
+      if (!mounted) return;
       if (filas.isEmpty) {
         setState(() { _puntos = []; _timestamps = []; _cargando = false; });
         return;
@@ -267,8 +331,10 @@ class _SensorSectionState extends State<_SensorSection> {
             raw is num ? raw.toDouble() : double.tryParse(raw.toString());
         if (y != null && y.isFinite) puntos.add(FlSpot(i.toDouble(), y));
       }
+      if (!mounted) return;
       setState(() { _puntos = puntos; _cargando = false; });
     } catch (_) {
+      if (!mounted) return;
       setState(() { _puntos = []; _cargando = false; });
     }
   }
