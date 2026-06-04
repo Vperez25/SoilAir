@@ -224,6 +224,23 @@ class _SensoresScreenState extends State<SensoresScreen> {
         nombre: result['nombre'] as String,
         cultivoId: result['cultivoId'] as int?,
       );
+
+      final cultivoId = result['cultivoId'] as int?;
+      if (cultivoId != null) {
+        final cultivo = _cultivos.firstWhere(
+          (c) => c['id'] == cultivoId,
+          orElse: () => <String, dynamic>{},
+        );
+        final nombreCultivo = cultivo['nombre'] as String?;
+        if (nombreCultivo != null) {
+          try {
+            await ConexionWiFi().setCultivo(nombreCultivo);
+          } catch (_) {
+            // si no estamos conectados al nodo en este momento, se ignora
+          }
+        }
+      }
+
       await _cargar();
       if (mounted) {
         final s = AppStrings.of(appLanguage.value);

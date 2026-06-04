@@ -108,6 +108,17 @@ class ConexionWiFi {
         .timeout(const Duration(seconds: 5));
   }
 
+  /// Envía el nombre del cultivo al nodo para que lo recuerde y lo muestre.
+  Future<void> setCultivo(String nombre) async {
+    await http
+        .post(
+          Uri.parse("$baseUrl/setcultivo"),
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({'cultivo': nombre}),
+        )
+        .timeout(const Duration(seconds: 5));
+  }
+
   /// Función principal — descarga todo, procesa y elimina
   Future<ResultadoSincronizacion> descargarTodosYEliminar(
     Future<void> Function(String jsonStr) procesarJson,

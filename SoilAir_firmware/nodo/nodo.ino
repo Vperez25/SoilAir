@@ -44,10 +44,10 @@
 
 #define MAX_NODOS          32
 #define TTL_SALTOS          5
-#define INTERVALO_ENVIO  30000    // ms entre transmisiones mesh
-#define INTERVALO_GUARDADO 15000 // ms entre guardados en disco (1 min)
+#define INTERVALO_ENVIO    10000   // ms entre transmisiones mesh
+#define INTERVALO_GUARDADO 10000   // ms entre guardados en disco
 #define TIMEOUT_NODO     60000    // ms para considerar nodo offline
-#define MAX_ARCHIVOS        150   // ~1 día con visita diaria
+#define MAX_ARCHIVOS          6   // demo: limpieza rápida de espacio
 #define CSMA_TIMEOUT_MS      60   // ms max esperando canal libre
 #define CSMA_SILENCIO_MS     15   // ms de silencio requerido antes de tx
 
@@ -65,6 +65,7 @@ unsigned long ultimoGuardado      = 0;
 unsigned long ultimoEstado        = 0;
 volatile unsigned long ultimoRx   = 0;  // ultimo instante en que se recibio algo (CSMA)
 String        claimToken          = "";
+String        cultivoNombre       = "";  // nombre del cultivo asignado desde la app
 long          timeOffset          = 0;  // epoch - millis()/1000
 bool          tieneHoraReal       = false;
 
@@ -220,7 +221,7 @@ void generarDatosSimulados() {
   baseDatos[idx].ultimoContacto = millis();
   baseDatos[idx].timestamp      = getTimestamp();
   baseDatos[idx].secuencia      = secuenciaLocal;
-  strncpy(baseDatos[idx].cultivo, NODO_NOMBRE, 11);
+  strncpy(baseDatos[idx].cultivo, cultivoNombre.length() > 0 ? cultivoNombre.c_str() : NODO_NOMBRE, 11);
   baseDatos[idx].ambTemperatura  = randomFloat(25, 35);
   baseDatos[idx].ambHumedad      = randomFloat(50, 70);
   baseDatos[idx].priRadiacion    = random(800, 1200);
@@ -266,7 +267,7 @@ void enviarDatosESPNOW() {
   msg.timestamp = baseDatos[NODO_ID-1].timestamp;
   msg.secuencia = secuenciaLocal;
   msg.saltos    = 0;
-  strncpy(msg.cultivo, NODO_NOMBRE, 11);
+  strncpy(msg.cultivo, cultivoNombre.length() > 0 ? cultivoNombre.c_str() : NODO_NOMBRE, 11);
   msg.cultivo[11] = '\0';
   int idx = NODO_ID - 1;
 
@@ -352,8 +353,28 @@ void guardarJSONConsolidado() {
 
   String fn = "/medicion_" + String(ts) + ".json";
   File file = LittleFS.open(fn, "w");
-  if (file) { serializeJson(doc, file); file.close(); }
-  else Serial.println("⚠️  Error al escribir JSON");
+  if (file) {
+    serializeJson(doc, file);
+    file.close();
+
+    int idx = NODO_ID - 1;
+    Serial.println("\n┌──────────────────────────────────────────────────────────┐");
+    Serial.printf( "│  GUARDADO EN DISCO → %s\n", fn.c_str());
+    Serial.println("├──────────────────────────────────────────────────────────┤");
+    Serial.printf( "│  Cultivo: %-12s   Secuencia: %lu\n", baseDatos[idx].cultivo, secuenciaLocal);
+    Serial.println("│  ── SUELO ──");
+    Serial.printf( "│   Humedad: %.1f%%   Temp: %.1f°C   pH: %.2f   EC: %.2f\n",
+                   baseDatos[idx].priHumedad, baseDatos[idx].priTemperatura,
+                   baseDatos[idx].priPh, baseDatos[idx].priEc);
+    Serial.printf( "│   N: %.0f   P: %.0f   K: %.0f   Radiacion: %.0f\n",
+                   baseDatos[idx].priN, baseDatos[idx].priP,
+                   baseDatos[idx].priK, baseDatos[idx].priRadiacion);
+    Serial.println("│  ── AMBIENTE ──");
+    Serial.printf( "│   Temp aire: %.1f°C   Humedad aire: %.1f%%\n",
+                   baseDatos[idx].ambTemperatura, baseDatos[idx].ambHumedad);
+    Serial.println("└──────────────────────────────────────────────────────────┘");
+  }
+  else Serial.println("[WARN] Error al escribir JSON");
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -362,15 +383,15 @@ void guardarJSONConsolidado() {
 void mostrarEstadoSerial() {
   int activos, conectados; contarNodos(activos, conectados);
   Serial.println("\n╔══════════════════════════════════════════════════════════════╗");
-  Serial.printf( "║  📡 soilAir - NODO: %-10s (ID: %d)                      ║\n", NODO_NOMBRE, NODO_ID);
-  Serial.printf( "║  📡 Nodos en red: %d activos, %d conectados                    ║\n", activos, conectados);
-  Serial.printf( "║  🔢 Secuencia local: %lu                                      ║\n", secuenciaLocal);
+  Serial.printf( "║  soilAir - NODO: %-10s (ID: %d)                         ║\n", NODO_NOMBRE, NODO_ID);
+  Serial.printf( "║  Nodos en red: %d activos, %d conectados                       ║\n", activos, conectados);
+  Serial.printf( "║  Secuencia local: %lu                                         ║\n", secuenciaLocal);
   Serial.println("╠══════════════════════════════════════════════════════════════╣");
   Serial.println("║  CULTIVO      │ ESTADO     │ HUM%  │ TEMP  │  pH  │ SEQ      ║");
   Serial.println("╠══════════════════════════════════════════════════════════════╣");
   for (int i = 0; i < MAX_NODOS; i++) {
     if (baseDatos[i].activo) {
-      const char* est = baseDatos[i].conectado ? "🟢 ONLINE " : "🔴 OFFLINE";
+      const char* est = baseDatos[i].conectado ? "ONLINE    " : "OFFLINE   ";
       Serial.printf("║  %-12s │ %s │ %4.0f%% │ %5.1f │ %4.1f │ %-8lu ║\n",
         baseDatos[i].cultivo, est, baseDatos[i].priHumedad,
         baseDatos[i].priTemperatura, baseDatos[i].priPh, baseDatos[i].secuencia);
@@ -378,7 +399,7 @@ void mostrarEstadoSerial() {
   }
   Serial.println("╚══════════════════════════════════════════════════════════════╝");
   if (conectados < activos) {
-    Serial.println("📦 DATOS PRESERVADOS de nodos desconectados:");
+    Serial.println("DATOS PRESERVADOS de nodos desconectados:");
     for (int i = 0; i < MAX_NODOS; i++)
       if (baseDatos[i].activo && !baseDatos[i].conectado)
         Serial.printf("   └─ %s: Hum=%.0f%%, Temp=%.1f°C, pH=%.1f (seq:%lu)\n",
@@ -420,6 +441,33 @@ void guardarClaim(const String& token) {
 void borrarClaim() {
   if (LittleFS.exists("/claim.json")) LittleFS.remove("/claim.json");
   claimToken = "";
+}
+
+void cargarCultivo() {
+  if (!LittleFS.exists("/cultivo.json")) return;
+  File f = LittleFS.open("/cultivo.json", "r");
+  if (!f) return;
+#if ARDUINOJSON_VERSION_MAJOR >= 7
+  JsonDocument doc;
+#else
+  DynamicJsonDocument doc(256);
+#endif
+  if (!deserializeJson(doc, f)) {
+    cultivoNombre = doc["cultivo"].as<String>();
+  }
+  f.close();
+}
+
+void guardarCultivo(const String& nombre) {
+#if ARDUINOJSON_VERSION_MAJOR >= 7
+  JsonDocument doc;
+#else
+  DynamicJsonDocument doc(256);
+#endif
+  doc["cultivo"] = nombre;
+  File f = LittleFS.open("/cultivo.json", "w");
+  if (f) { serializeJson(doc, f); f.close(); }
+  cultivoNombre = nombre;
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -528,12 +576,32 @@ void handleClaimPost() {
 
   if (claimToken.length() == 0 || claimToken == token) {
     guardarClaim(token);
-    Serial.printf("🔒 Nodo vinculado (token: %.8s...)\n", token.c_str());
+    Serial.printf("Nodo vinculado (token: %.8s...)\n", token.c_str());
     server.send(200, "application/json", "{\"ok\":true}");
   } else {
-    Serial.println("🚫 Intento de vinculacion rechazado (token distinto)");
+    Serial.println("Intento de vinculacion rechazado (token distinto)");
     server.send(403, "application/json", "{\"ok\":false,\"error\":\"claimed\"}");
   }
+}
+
+// /setcultivo POST {"cultivo": "Jitomate"} → guarda el nombre del cultivo
+void handleSetCultivo() {
+  String body = server.arg("plain");
+  if (body.length() == 0) { server.send(400, "text/plain", "Body requerido"); return; }
+#if ARDUINOJSON_VERSION_MAJOR >= 7
+  JsonDocument req;
+#else
+  DynamicJsonDocument req(256);
+#endif
+  if (deserializeJson(req, body)) { server.send(400, "text/plain", "JSON invalido"); return; }
+  String nombre = req["cultivo"].as<String>();
+  if (nombre.length() == 0) { server.send(400, "text/plain", "Cultivo vacio"); return; }
+
+  guardarCultivo(nombre);
+  strncpy(baseDatos[NODO_ID - 1].cultivo, nombre.c_str(), 11);
+  baseDatos[NODO_ID - 1].cultivo[11] = '\0';
+  Serial.printf("Cultivo configurado desde la app: %s\n", nombre.c_str());
+  server.send(200, "application/json", "{\"ok\":true}");
 }
 
 // /settime POST {"epoch": 1234567890} → sincroniza hora real
@@ -550,7 +618,7 @@ void handleSetTime() {
   if (epoch > 1000000000L) {
     timeOffset = epoch - (long)(millis() / 1000);
     tieneHoraReal = true;
-    Serial.printf("🕐 Hora sincronizada: %ld (offset: %ld)\n", epoch, timeOffset);
+    Serial.printf("Hora sincronizada: %ld (offset: %ld)\n", epoch, timeOffset);
     server.send(200, "application/json", "{\"ok\":true}");
   } else {
     server.send(400, "text/plain", "Epoch invalido");
@@ -573,7 +641,7 @@ void handleClaimDelete() {
 
   if (claimToken.length() == 0 || claimToken == token) {
     borrarClaim();
-    Serial.println("🔓 Nodo liberado via HTTP");
+    Serial.println("Nodo liberado via HTTP");
     server.send(200, "application/json", "{\"ok\":true}");
   } else {
     server.send(403, "application/json", "{\"ok\":false,\"error\":\"wrong_token\"}");
@@ -586,7 +654,7 @@ void handleClaimDelete() {
 void setup() {
   Serial.begin(115200); delay(1000);
   Serial.println("\n╔══════════════════════════════════════════════════════════════╗");
-  Serial.printf( "║  📡 soilAir - NODO: %-10s (ID: %d)                      ║\n", NODO_NOMBRE, NODO_ID);
+  Serial.printf( "║  soilAir - NODO: %-10s (ID: %d)                         ║\n", NODO_NOMBRE, NODO_ID);
   Serial.printf( "║  WiFi: %-16s  Pass: %-8s                    ║\n", AP_SSID, AP_PASS);
   Serial.println("╚══════════════════════════════════════════════════════════════╝\n");
 
@@ -597,45 +665,52 @@ void setup() {
     strcpy(baseDatos[i].cultivo, "");
   }
 
-  if (!LittleFS.begin(true)) { Serial.println("❌ Error LittleFS"); return; }
-  Serial.println("✅ LittleFS OK");
+  if (!LittleFS.begin(true)) { Serial.println("[ERR] LittleFS"); return; }
+  Serial.println("LittleFS OK");
   cargarClaim();
   if (claimToken.length() > 0)
-    Serial.printf("🔒 Nodo vinculado (token: %.8s...)\n", claimToken.c_str());
+    Serial.printf("Nodo vinculado (token: %.8s...)\n", claimToken.c_str());
   else
-    Serial.println("🔓 Nodo sin vincular");
+    Serial.println("Nodo sin vincular");
+  cargarCultivo();
+  if (cultivoNombre.length() > 0) {
+    strncpy(baseDatos[NODO_ID - 1].cultivo, cultivoNombre.c_str(), 11);
+    baseDatos[NODO_ID - 1].cultivo[11] = '\0';
+    Serial.printf("Cultivo cargado: %s\n", cultivoNombre.c_str());
+  }
 
   pinMode(0, INPUT_PULLUP); // Botón BOOT para reset físico
 
   WiFi.mode(WIFI_AP_STA);
   WiFi.softAP(AP_SSID, AP_PASS);
-  Serial.printf("✅ WiFi AP: %s  IP: %s\n", AP_SSID, WiFi.softAPIP().toString().c_str());
+  Serial.printf("WiFi AP: %s  IP: %s\n", AP_SSID, WiFi.softAPIP().toString().c_str());
 
-  if (esp_now_init() != ESP_OK) { Serial.println("❌ Error ESP-NOW"); return; }
+  if (esp_now_init() != ESP_OK) { Serial.println("[ERR] ESP-NOW"); return; }
   esp_now_register_send_cb(onDataSent);
   esp_now_register_recv_cb(onDataRecv);
   esp_now_peer_info_t peer = {};
   memcpy(peer.peer_addr, macBroadcast, 6);
   peer.channel=0; peer.encrypt=false;
   esp_now_add_peer(&peer);
-  Serial.println("✅ ESP-NOW OK");
+  Serial.println("ESP-NOW OK");
 
   server.on("/list",    HTTP_GET,    handleList);
   server.on("/get",     HTTP_GET,    handleGetFile);
   server.on("/delete",  HTTP_GET,    handleDelete);
   server.on("/status",  HTTP_GET,    handleStatus);
   server.on("/format",  HTTP_GET,    handleFormat);
+  server.on("/setcultivo", HTTP_POST, handleSetCultivo);
   server.on("/settime", HTTP_POST,   handleSetTime);
   server.on("/claim",   HTTP_GET,    handleClaimGet);
   server.on("/claim",   HTTP_POST,   handleClaimPost);
   server.on("/claim",   HTTP_DELETE, handleClaimDelete);
   server.begin();
-  Serial.println("✅ HTTP Server OK");
+  Serial.println("HTTP Server OK");
 
   // Offset de arranque: evita que todos transmitan al mismo tiempo
   // al encender el sistema simultaneamente
   delay(NODO_ID * 600);
-  Serial.println("\n🚀 Sistema listo! Esperando otros nodos...\n");
+  Serial.println("\nSistema listo! Esperando otros nodos...\n");
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -651,7 +726,7 @@ void checkResetFisico() {
       _botonPresionado = millis();
     } else if (millis() - _botonPresionado >= 5000 && claimToken.length() > 0) {
       borrarClaim();
-      Serial.println("🔓 Nodo liberado por reset físico (BOOT 5s)");
+      Serial.println("Nodo liberado por reset fisico (BOOT 5s)");
       _botonActivo = false; // evita repetición
     }
   } else {
@@ -670,13 +745,13 @@ void loop() {
     generarDatosSimulados();
     enviarDatosESPNOW();
   }
+  if (millis() - ultimoEstado >= 10000) {
+    ultimoEstado = millis();
+    mostrarEstadoSerial();
+  }
   if (millis() - ultimoGuardado >= INTERVALO_GUARDADO) {
     ultimoGuardado = millis();
     guardarJSONConsolidado();
-  }
-  if (millis() - ultimoEstado >= 5000) {
-    ultimoEstado = millis();
-    mostrarEstadoSerial();
   }
   delay(10);
 }

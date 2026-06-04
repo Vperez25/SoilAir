@@ -63,7 +63,7 @@ class WifiException implements Exception {
           'No se encontró el nodo. Asegúrate de que el ESP32 esté encendido '
           'y que estés dentro del rango.',
       'NO_DISPONIBLE':
-          'La red no está disponible. Intenta de nuevo en unos segundos.',
+          'Asegúrate de tener el WiFi activado, el sensor encendido y cerca del dispositivo.',
     };
     return WifiException(
       codigo: e.code,
