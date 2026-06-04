@@ -135,7 +135,9 @@ class AppStrings {
   String get dispositivosSoportados=> _t('dispositivosSoportados');
   String get idiomaActualizado     => _t('idiomaActualizado');
   String get sensorGuardado        => _t('sensorGuardado');
+  String get generarReporte        => _t('generarReporte');
   String get generandoReporte      => _t('generandoReporte');
+  String get reporteExito          => _t('reporteExito');
   String get reporteError          => _t('reporteError');
   String get faqSeccion            => _t('faqSeccion');
   String get faq1Q                 => _t('faq1Q');
@@ -338,7 +340,9 @@ class AppStrings {
       'dispositivosSoportados': 'Dispositivos soportados',
       'idiomaActualizado':      'Idioma actualizado',
       'sensorGuardado':         'Sensor configurado',
+      'generarReporte':         'Generar reporte',
       'generandoReporte':       'Generando reporte...',
+      'reporteExito':           'Reporte generado correctamente',
       'reporteError':           'Error al generar el reporte',
       'faqSeccion':             'Preguntas frecuentes',
       'faq1Q':                  '¿Cómo sincronizo mi sensor?',
@@ -480,7 +484,9 @@ class AppStrings {
       'dispositivosSoportados': 'Supported devices',
       'idiomaActualizado':      'Language updated',
       'sensorGuardado':         'Sensor configured',
+      'generarReporte':         'Generate report',
       'generandoReporte':       'Generating report...',
+      'reporteExito':           'Report generated successfully',
       'reporteError':           'Error generating report',
       'faqSeccion':             'Frequently asked questions',
       'faq1Q':                  'How do I sync my sensor?',
@@ -622,7 +628,9 @@ class AppStrings {
       'dispositivosSoportados': 'Appareils pris en charge',
       'idiomaActualizado':      'Langue mise à jour',
       'sensorGuardado':         'Capteur configuré',
+      'generarReporte':         'Générer rapport',
       'generandoReporte':       'Génération du rapport...',
+      'reporteExito':           'Rapport généré avec succès',
       'reporteError':           'Erreur lors de la génération du rapport',
       'faqSeccion':             'Questions fréquentes',
       'faq1Q':                  'Comment synchroniser mon capteur ?',

@@ -512,19 +512,33 @@ class DatabaseHelper {
     ''');
   }
 
-  /// Guarda nombre y cultivo de un sensor (siempre sobreescribe ambos campos).
+  /// Guarda nombre y cultivo de un sensor (upsert: inserta si no existe).
   Future<void> configurarSensor({
     required String sensorId,
     required String nombre,
     int? cultivoId,
   }) async {
     final db = await database;
-    await db.update(
+    final rowsUpdated = await db.update(
       'admin_sensores',
       {'nombre': nombre, 'cultivo_asignado': cultivoId},
       where: 'id = ?',
       whereArgs: [sensorId],
     );
+    if (rowsUpdated == 0) {
+      await db.insert('admin_sensores', {
+        'id': sensorId,
+        'nombre': nombre,
+        'cultivo_asignado': cultivoId,
+        'oculto': 0,
+      });
+    }
+  }
+
+  Future<List<String>> getSsidsConocidos() async {
+    final db = await database;
+    final rows = await db.query('nodos_propietario', columns: ['ssid']);
+    return rows.map((r) => r['ssid'] as String).toList();
   }
 
   /// Nombres configurados de todos los sensores excepto el indicado.

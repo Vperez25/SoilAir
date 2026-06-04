@@ -45,7 +45,7 @@
 #define MAX_NODOS          32
 #define TTL_SALTOS          5
 #define INTERVALO_ENVIO  30000    // ms entre transmisiones mesh
-#define INTERVALO_GUARDADO 60000 // ms entre guardados en disco (10 min)
+#define INTERVALO_GUARDADO 15000 // ms entre guardados en disco (1 min)
 #define TIMEOUT_NODO     60000    // ms para considerar nodo offline
 #define MAX_ARCHIVOS        150   // ~1 día con visita diaria
 #define CSMA_TIMEOUT_MS      60   // ms max esperando canal libre

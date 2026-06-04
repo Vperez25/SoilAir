@@ -74,14 +74,7 @@ class _HistorialScreenState extends State<HistorialScreen> {
   Future<void> _exportarPDF(AppStrings s) async {
     if (_generandoReporte || _idsPrimarios.isEmpty) return;
     setState(() => _generandoReporte = true);
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(s.generandoReporte),
-      duration: const Duration(seconds: 30),
-      backgroundColor: AppLightTheme.botonPrincipal,
-      behavior: SnackBarBehavior.floating,
-    ));
     try {
-      // Usar nombres con fallback legible (p1 → "Sensor Principal") igual que el historial
       final nombresDisplay = <String, String?>{
         for (final id in _idsPrimarios) id: _nombreSensor(id, s),
       };
@@ -89,9 +82,15 @@ class _HistorialScreenState extends State<HistorialScreen> {
         sensorIds: _idsPrimarios,
         nombresSensores: nombresDisplay,
       );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(s.reporteExito),
+          backgroundColor: Colors.green.shade700,
+          behavior: SnackBarBehavior.floating,
+        ));
+      }
     } catch (_) {
       if (mounted) {
-        ScaffoldMessenger.of(context).clearSnackBars();
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
           content: Text(s.reporteError),
           backgroundColor: Colors.red,
@@ -99,10 +98,7 @@ class _HistorialScreenState extends State<HistorialScreen> {
         ));
       }
     } finally {
-      if (mounted) {
-        ScaffoldMessenger.of(context).clearSnackBars();
-        setState(() => _generandoReporte = false);
-      }
+      if (mounted) setState(() => _generandoReporte = false);
     }
   }
 
@@ -127,16 +123,15 @@ class _HistorialScreenState extends State<HistorialScreen> {
         if (_idsPrimarios.isNotEmpty)
           _generandoReporte
               ? const Padding(
-                  padding: EdgeInsets.all(14),
+                  padding: EdgeInsets.symmetric(horizontal: 16),
                   child: SizedBox(
                     width: 20, height: 20,
                     child: CircularProgressIndicator(strokeWidth: 2),
                   ),
                 )
-              : IconButton(
-                  icon: const Icon(Icons.download_outlined),
-                  tooltip: 'Exportar PDF',
+              : TextButton(
                   onPressed: () => _exportarPDF(s),
+                  child: Text(s.generarReporte),
                 ),
       ],
       body: Column(children: [

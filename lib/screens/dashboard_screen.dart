@@ -97,7 +97,7 @@ class _DashboardScreenState extends State<DashboardScreen>
     final ts = datos['timestamp'] as int?;
     if (ts == null) return true;
     return DateTime.now().difference(
-      DateTime.fromMillisecondsSinceEpoch(ts * 1000)).inHours >= 24;
+      DateTime.fromMillisecondsSinceEpoch(ts * 1000)).inMinutes >= 5;
   }
 
   String _nombreSensor(String id, AppStrings s) {
