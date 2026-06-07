@@ -11,7 +11,7 @@ class AutoSyncService {
   bool _sincronizando = false;
 
   void start() {
-    _timer = Timer.periodic(const Duration(seconds: 10), (_) => _sync());
+    _timer = Timer.periodic(const Duration(minutes: 5), (_) => _sync());
   }
 
   void stop() {

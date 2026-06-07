@@ -196,7 +196,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                 Text(s.bienvenidoDesc,
                     style: TextStyle(
                         fontSize: 14,
-                        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.65),
+                        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.75),
                         height: 1.5),
                     textAlign: TextAlign.center),
                 const SizedBox(height: 28),
@@ -205,12 +205,12 @@ class _DashboardScreenState extends State<DashboardScreen>
                   children: [
                     Icon(Icons.sensors,
                         size: 16,
-                        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5)),
+                        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.72)),
                     const SizedBox(width: 6),
                     Text(s.navSensores,
                         style: TextStyle(
                             fontSize: 13,
-                            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
+                            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.72),
                             fontWeight: FontWeight.w500)),
                   ],
                 ),
@@ -268,7 +268,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                   color: Theme.of(context)
                       .colorScheme
                       .onSurface
-                      .withValues(alpha: 0.5),
+                      .withValues(alpha: 0.72),
                 ),
               ),
               children: [

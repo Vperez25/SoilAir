@@ -44,8 +44,8 @@
 
 #define MAX_NODOS          32
 #define TTL_SALTOS          5
-#define INTERVALO_ENVIO    10000   // ms entre transmisiones mesh
-#define INTERVALO_GUARDADO 10000   // ms entre guardados en disco
+#define INTERVALO_ENVIO   300000   // ms entre transmisiones mesh (5 min)
+#define INTERVALO_GUARDADO 300000  // ms entre guardados en disco (5 min)
 #define TIMEOUT_NODO     60000    // ms para considerar nodo offline
 #define MAX_ARCHIVOS          6   // demo: limpieza rápida de espacio
 #define CSMA_TIMEOUT_MS      60   // ms max esperando canal libre
@@ -363,14 +363,14 @@ void guardarJSONConsolidado() {
     Serial.println("├──────────────────────────────────────────────────────────┤");
     Serial.printf( "│  Cultivo: %-12s   Secuencia: %lu\n", baseDatos[idx].cultivo, secuenciaLocal);
     Serial.println("│  ── SUELO ──");
-    Serial.printf( "│   Humedad: %.1f%%   Temp: %.1f°C   pH: %.2f   EC: %.2f\n",
+    Serial.printf( "│   Humedad: %.0f%%   Temp: %.2f°C   pH: %.2f   EC: %.2f\n",
                    baseDatos[idx].priHumedad, baseDatos[idx].priTemperatura,
                    baseDatos[idx].priPh, baseDatos[idx].priEc);
     Serial.printf( "│   N: %.0f   P: %.0f   K: %.0f   Radiacion: %.0f\n",
                    baseDatos[idx].priN, baseDatos[idx].priP,
                    baseDatos[idx].priK, baseDatos[idx].priRadiacion);
     Serial.println("│  ── AMBIENTE ──");
-    Serial.printf( "│   Temp aire: %.1f°C   Humedad aire: %.1f%%\n",
+    Serial.printf( "│   Temp aire: %.2f°C   Humedad aire: %.0f%%\n",
                    baseDatos[idx].ambTemperatura, baseDatos[idx].ambHumedad);
     Serial.println("└──────────────────────────────────────────────────────────┘");
   }
@@ -745,7 +745,7 @@ void loop() {
     generarDatosSimulados();
     enviarDatosESPNOW();
   }
-  if (millis() - ultimoEstado >= 10000) {
+  if (millis() - ultimoEstado >= 300000) {
     ultimoEstado = millis();
     mostrarEstadoSerial();
   }

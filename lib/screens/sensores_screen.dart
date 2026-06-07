@@ -194,7 +194,14 @@ class _SensoresScreenState extends State<SensoresScreen> {
 
     if (liberado == true) {
       await _db.liberarNodoPropietario(nodo.ssid);
-      setState(() => _nodosPropiedad.remove(nodo.ssid));
+      if (mounted) setState(() {
+        _nodosPropiedad.remove(nodo.ssid);
+        // Garantiza que el nodo esté en _nodos para que reaparezca
+        // en la lista detectada sin necesidad de un re-scan.
+        if (!_nodos.any((n) => n.ssid == nodo.ssid)) {
+          _nodos = [nodo, ..._nodos];
+        }
+      });
     }
   }
 
@@ -435,7 +442,7 @@ class _SensoresScreenState extends State<SensoresScreen> {
                     s.puedesConectar,
                     style: TextStyle(
                         fontSize: 13,
-                        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.65)),
+                        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.75)),
                     textAlign: TextAlign.center,
                   ),
                 ),
@@ -463,10 +470,10 @@ class _SensoresScreenState extends State<SensoresScreen> {
         Icon(icono, size: 44, color: onSurface.withValues(alpha: 0.3)),
         const SizedBox(height: 10),
         Text(texto,
-            style: TextStyle(color: onSurface.withValues(alpha: 0.55), fontWeight: FontWeight.w500)),
+            style: TextStyle(color: onSurface.withValues(alpha: 0.72), fontWeight: FontWeight.w500)),
         const SizedBox(height: 4),
         Text(sub, textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 12, color: onSurface.withValues(alpha: 0.45))),
+            style: TextStyle(fontSize: 12, color: onSurface.withValues(alpha: 0.72))),
       ]),
     );
   }
@@ -499,7 +506,7 @@ class _SensoresScreenState extends State<SensoresScreen> {
             Text(_formatFecha(ts, s),
                 style: TextStyle(
                     fontSize: 11,
-                    color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5))),
+                    color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.72))),
           ],
         ),
         trailing: Row(

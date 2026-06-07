@@ -168,13 +168,13 @@ class _HistorialScreenState extends State<HistorialScreen> {
                         const SizedBox(height: 12),
                         Text(s.sinSensoresRegistrados,
                             style: TextStyle(
-                                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.55))),
+                                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.72))),
                         const SizedBox(height: 6),
                         Text(s.sincronizaParaLecturas,
                             textAlign: TextAlign.center,
                             style: TextStyle(
                                 fontSize: 12,
-                                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45))),
+                                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.72))),
                       ]),
                     ),
                 ],
@@ -194,7 +194,7 @@ class _HistorialScreenState extends State<HistorialScreen> {
       padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
       child: Row(children: [
         Text('${s.periodo}:',
-            style: TextStyle(fontSize: 12, color: onSurface.withValues(alpha: 0.5))),
+            style: TextStyle(fontSize: 12, color: onSurface.withValues(alpha: 0.72))),
         const SizedBox(width: 10),
         Expanded(
           child: SingleChildScrollView(
@@ -216,7 +216,7 @@ class _HistorialScreenState extends State<HistorialScreen> {
                       ),
                       child: Text(rangos[i], style: TextStyle(
                         fontSize: 12,
-                        color: sel ? primary : onSurface.withValues(alpha: 0.55),
+                        color: sel ? primary : onSurface.withValues(alpha: 0.72),
                         fontWeight: sel ? FontWeight.w600 : FontWeight.normal,
                       )),
                     ),

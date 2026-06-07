@@ -1,5 +1,11 @@
 import 'package:flutter/material.dart';
 
+class _EstadoSensor {
+  final Color color;
+  final String? etiqueta;
+  const _EstadoSensor(this.color, [this.etiqueta]);
+}
+
 class SensorCard extends StatelessWidget {
   final String title;
   final String value;
@@ -18,44 +24,51 @@ class SensorCard extends StatelessWidget {
     this.color,
   });
 
-  Color determineColor() {
-    if (cultivo == null || paramKey == null) return Colors.blueGrey.shade400;
+  _EstadoSensor _calcEstado() {
+    if (cultivo == null || paramKey == null) {
+      return _EstadoSensor(Colors.blueGrey.shade400);
+    }
 
     final double? val = double.tryParse(value);
-    if (val == null) return Colors.grey;
+    if (val == null) return _EstadoSensor(Colors.grey);
 
-    // Mapeo de claves específicas a columnas DB
     String key = paramKey!;
     if (key == 'temperatura') key = 'temp';
-    if (key == 'humedad') key = 'humedad'; // ya coincide
-    if (key == 'ph') key = 'ph';
     if (key == 'ec' || key == 'conductividad') key = 'ec';
-    if (key == 'n' || key == 'p' || key == 'k') key = key; // NPK igual
-    if (key == 'radiacion') key = 'radiacion';
 
-    final optMin = cultivo?['${key}_optimo_min'] as num?;
-    final optMax = cultivo?['${key}_optimo_max'] as num?;
+    final optMin  = cultivo?['${key}_optimo_min']  as num?;
+    final optMax  = cultivo?['${key}_optimo_max']  as num?;
     final critMin = cultivo?['${key}_critico_min'] as num?;
     final critMax = cultivo?['${key}_critico_max'] as num?;
 
+    // Rango óptimo
     if (optMin != null && optMax != null && val >= optMin && val <= optMax) {
-      return Colors.green; // rango ideal
+      return _EstadoSensor(Colors.green);
     }
 
-    if (critMin != null && optMin != null && val >= critMin && val < optMin) {
-      return Colors.orange; // crítico inferior a ideal inferior
+    // Por debajo del óptimo
+    if (optMin != null && val < optMin) {
+      if (critMin != null && val < critMin) {
+        return _EstadoSensor(Colors.indigo.shade700, 'Crítico bajo');
+      }
+      return _EstadoSensor(Colors.lightBlue.shade700, 'Bajo');
     }
 
-    if (critMax != null && optMax != null && val > optMax && val <= critMax) {
-      return Colors.orange; // crítico superior a ideal superior
+    // Por encima del óptimo
+    if (optMax != null && val > optMax) {
+      if (critMax != null && val > critMax) {
+        return _EstadoSensor(Colors.red, 'Crítico alto');
+      }
+      return _EstadoSensor(Colors.orange, 'Alto');
     }
 
-    return Colors.red; // fuera de rango crítico
+    return _EstadoSensor(Colors.blueGrey.shade400);
   }
 
   @override
   Widget build(BuildContext context) {
-    final bgColor = color ?? determineColor();
+    final estado  = color != null ? _EstadoSensor(color!) : _calcEstado();
+    final bgColor = estado.color;
 
     return Container(
       width: 120,
@@ -85,10 +98,21 @@ class SensorCard extends StatelessWidget {
                     fontSize: 13,
                     color: bgColor.withValues(alpha: 0.7),
                   ),
-                )
+                ),
               ],
             ),
           ),
+          if (estado.etiqueta != null) ...[
+            const SizedBox(height: 4),
+            Text(
+              estado.etiqueta!,
+              style: TextStyle(
+                fontSize: 10,
+                color: bgColor,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
         ],
       ),
     );

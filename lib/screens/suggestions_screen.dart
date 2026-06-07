@@ -206,13 +206,13 @@ class _SugerenciasScreenState extends State<SugerenciasScreen> {
             Row(
               children: [
                 Icon(Icons.access_time_rounded,
-                    size: 13, color: onSurface.withValues(alpha: 0.45)),
+                    size: 13, color: onSurface.withValues(alpha: 0.72)),
                 const SizedBox(width: 4),
                 Text(
                   '${s.ultimaLectura}: ${_formatTiempo(_ultimoTimestamp, s)}',
                   style: TextStyle(
                       fontSize: 12,
-                      color: onSurface.withValues(alpha: 0.5)),
+                      color: onSurface.withValues(alpha: 0.72)),
                 ),
               ],
             ),
@@ -260,7 +260,7 @@ class _SugerenciasScreenState extends State<SugerenciasScreen> {
           textAlign: TextAlign.center,
           style: TextStyle(
               fontSize: 14,
-              color: onSurface.withValues(alpha: 0.6),
+              color: onSurface.withValues(alpha: 0.72),
               height: 1.4)),
     ]),
   );
@@ -278,7 +278,7 @@ class _SugerenciasScreenState extends State<SugerenciasScreen> {
           textAlign: TextAlign.center,
           style: TextStyle(
               fontSize: 14,
-              color: onSurface.withValues(alpha: 0.7),
+              color: onSurface.withValues(alpha: 0.75),
               height: 1.4)),
     ]),
   );
